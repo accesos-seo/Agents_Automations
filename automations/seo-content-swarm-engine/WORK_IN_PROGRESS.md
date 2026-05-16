@@ -12,7 +12,6 @@
 |---|---|---|---|---|---|
 | **S-009** | D. Validator (+ orchestrator gate logic) | Claude-chat-calidad-contenido | 2026-05-16 | Implementar D-008: recalibrar contract gate (piso 1500-2800), generar meta_description automáticamente, mejorar repair loop, construir Quality Enforcer semántico. NO toca prompts del writer. | en_curso |
 | **S-013** | B. Briefs / n8n A | _por asignar — chat Claude con acceso n8n_ | _por iniciar_ | Refuerzo n8n A: sanitizador de competidores + inyección de brand_contract. Handover en [`handovers/2026-05-16-handover-n8n-brief-contract.md`](../../handovers/2026-05-16-handover-n8n-brief-contract.md). | listo_para_tomar |
-| **S-014** | H. Política | Usuario (aprobación directa en GitHub UI) | _por iniciar_ | Aplicar los 5 patches copy/paste en `ops-control-plane`. Instrucciones en [`propuestas-ops-control-plane/README.md`](propuestas-ops-control-plane/README.md). | listo_para_tomar |
 
 ---
 
@@ -32,7 +31,10 @@
 | S-011 | F. ILS + C. Writer | Claude-chat-enlazado-cj | 2026-05-16 | 2026-05-16 | ✅ Arquitectura definitiva v2 post-clarificación: taxonomía categoría/cluster/hermana confirmada, 4 slots editoriales, diseño modular anti-colapso (Python + 2 Edge Functions nuevas + injector mejorado). Solicitud técnica formal para técnico. Spec v3 completo en propuesta 06-v3. |
 | S-012 | H. Política + F. ILS | Claude-chat-enlazado-cj | 2026-05-16 | 2026-05-16 | ✅ Brand voice Vozy AI (Colombia, es-CO) completo — D-009. Países corregidos: Armor Corp/Leasy/Educa → Perú (es-PE). 15 competidores prohibidos añadidos al YAML. AGENT_ONBOARDING actualizado. Solicitud técnica sitemaps corregida. Pendiente del usuario esta semana: URLs sitemaps, categorías WP, clusters por marca. |
 | S-005b | I. Meta + H. Política | Claude-chat-principal | 2026-05-16 15:45 | 2026-05-16 16:30 | ✅ Handover detallado para n8n (S-013) + paquete de aprobación GitHub UI integrado con propuestas 01-07 (S-014). Renumeración tras detectar S-006 a S-012 ya tomados por chats paralelos. PR #2 actualizado. |
-| S-015 | J. Client Feedback / Notificaciones | Claude-chat-principal | 2026-05-16 | 2026-05-16 | ✅ D-010: Email de confirmación al cliente cuando deja feedback. `submit-client-article-feedback` v2 desplegado — llama Mailjet directamente tras INSERT en `client_article_feedback`. Bilingüe (pt-BR / es). No-fatal. |
+| S-014 | B. Briefs — webhook trigger fix | Claude-chat-qa-reviewer | 2026-05-16 | 2026-05-16 | ✅ Webhook n8n `supabase-content-trigger` (muerto) reemplazado por Edge Function `seo-brief-processor` v1. Lee Google Doc, sanitiza 16 competidores, inyecta brand_contract desde GitHub, setea ai_extraction_status=completed solo si sin article_content. Trigger fn_trigger_seo_investigation actualizado. Prueba E2E OK: f0311061 → completed, doc_read=true, brand_slug=bethaus. 286 pending con brief_url listos para backfill manual. |
+| S-015 | H. Política + I. Meta | Claude-chat-enlazado-cj | 2026-05-16 | 2026-05-16 | ✅ Migración completa de brand voices a Agents_Automations como fuente de verdad única. 9 brand voices creados (brands/). 2 archivos de pipeline creados (pipeline/). CLAUDE.md y AGENT_ONBOARDING actualizados para apuntar a nueva ubicación. D-010 registrado. |
+| S-016 | J. Client Reviewer (nueva área) | Claude-chat-qa-reviewer | 2026-05-16 | 2026-05-16 | ✅ D-009-client implementado: tabla client_article_feedback + RLS (3 políticas) + 2 triggers + Edge Function submit-client-article-feedback v1 ACTIVE. client_approval_status actualizado automáticamente. Pendiente: workflow n8n client-article-feedback-notify. Ver handover 2026-05-16-client-article-feedback.md. |
+| S-017 | J. Client Feedback — email confirmación | Claude-chat-principal | 2026-05-16 | 2026-05-16 | ✅ D-010 (email): `submit-client-article-feedback` v2 desplegado — Mailjet directo tras INSERT en `client_article_feedback`. Bilingüe (pt-BR / es), 4 variantes por tipo, no-fatal. |
 
 ---
 
@@ -48,7 +50,7 @@ Añade una fila a "Sesiones activas" con este formato, en el commit que inicia t
 
 **Descripción breve:** 1 línea. Ejemplo: "Migrar audio a OpenAI TTS-1-HD y validar literalidad con 3 artículos".
 
-**ID siguiente:** S-016 (las anteriores ya están tomadas — verifica esta lista antes de elegir número).
+**ID siguiente:** S-018 (las anteriores ya están tomadas — verifica esta lista antes de elegir número).
 
 ---
 
