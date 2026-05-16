@@ -10,7 +10,6 @@
 
 | Sesión | Área | Owner | Inicio | Tarea | Estado |
 |---|---|---|---|---|---|
-| S-007 | C. Writer (zona post-FAQ) | Claude-code-web | 2026-05-16 | Implementación zona footer: separator, tabs (Assets / Customer Journey / Lógica del contenido), deploy en orquestador v4.4 | en_curso |
 
 ---
 
@@ -18,6 +17,7 @@
 
 | Sesión | Área | Owner | Inicio | Cierre | Resultado |
 |---|---|---|---|---|---|
+| S-007 | C. Writer (zona post-FAQ) | Claude-code-web | 2026-05-16 | 2026-05-16 | ✅ Footer zone implementada y desplegada: orquestador v44 activo en Light_House. Tabs Assets / Customer Journey / Lógica del contenido. Env var OPENROUTER_MODEL_FOOTER_ZONE pendiente de configurar. |
 | S-006 | C. Writer (nuevo) | Claude-chat-customer-journey | 2026-05-16 | — | ⏸ Transferido a S-007 (solo registró sesión, no implementó) |
 | S-001 | A. Audio (D-001) | Claude vía MCP | 2026-05-16 14:20 | 2026-05-16 14:30 | ✅ Deploy v13 limpieza HTML, prueba end-to-end OK |
 | S-002 | H. Política (D-002) | Claude vía MCP | 2026-05-16 14:40 | 2026-05-16 15:00 | ✅ Política de competidores publicada, 4 patches para ops-control-plane listos |
