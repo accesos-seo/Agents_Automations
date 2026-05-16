@@ -1,0 +1,208 @@
+# Lista operativa de competidores prohibidos
+# Política canónica: ../../../referencias/politica-competidores-prohibidos.md
+# Estado: ACTIVA — regla bloqueante en producción
+# Última actualización: 2026-05-16
+
+# Lectura: este archivo es la fuente de verdad operativa que los agentes y el
+# contract-validator consumen para detectar y bloquear menciones a competidores.
+# Match: word-boundary + case-insensitive sobre cada alias.
+# Una coincidencia con cualquier alias = artículo rechazado en producción.
+
+version: 1
+updated_at: "2026-05-16"
+maintainer: producto
+
+# ---------------------------------------------------------------------------
+# Listas por scope
+# ---------------------------------------------------------------------------
+
+global:
+  # Competidores prohibidos en TODO el ecosistema, sin importar la marca emisora.
+  # Vacía hoy. Se completa cuando exista una marca competidora transversal.
+  competitors: []
+
+industries:
+  # Lista por industria/mercado. Aplica a todas las marcas que pertenezcan a esa
+  # industria en ese mercado.
+
+  igaming_pt_br:
+    description: "Competidores en el mercado brasileño de iGaming (cassinos online y casas de apuestas)."
+    applies_to_brands:
+      - cassino-bet
+      - vera-bet
+    competitors:
+      - canonical: Blaze
+        aliases: [Blaze, "Blaze.com", "Blaze Casino", "Blaze Cassino", "Blaze Bet", "Blaze Brasil"]
+      - canonical: Stake
+        aliases: ["Stake.com", "Stake Casino", "Stake Cassino", "Stake Bet", "Stake Brasil", "Stake.bet.br"]
+        notes: "El sustantivo común 'stake' (monto apostado) NO es bloqueado. El match requiere que 'Stake' aparezca como nombre propio + sufijo de marca."
+        match_strategy: requires_brand_context
+      - canonical: Betano
+        aliases: [Betano, "Betano Brasil", "Betano.bet.br", "Betano.com"]
+      - canonical: 1xBet
+        aliases: ["1xBet", "1x Bet", "1xBet Brasil", "1xBet.com"]
+      - canonical: F12Bet
+        aliases: [F12Bet, "F12.Bet", "F12 Bet", "F12Bet Brasil"]
+      - canonical: KTO
+        aliases: [KTO, "KTO Brasil", "KTO Bet", "KTO Cassino", "KTO.bet.br"]
+      - canonical: Estrela Bet
+        aliases: ["Estrela Bet", EstrelaBet, "Estrela.Bet", "Estrelabet"]
+      - canonical: Pixbet
+        aliases: [Pixbet, "Pix.Bet", "Pix Bet", "PixBet Brasil"]
+        notes: "El método de pago 'Pix' NO es bloqueado. El match requiere que aparezca como nombre compuesto."
+        match_strategy: requires_brand_context
+      - canonical: Sportingbet
+        aliases: [Sportingbet, "Sporting Bet", "Sporting.Bet", "Sportingbet Brasil"]
+      - canonical: Superbet
+        aliases: [Superbet, "Super Bet", "Super.Bet", "Superbet Brasil"]
+      - canonical: Novibet
+        aliases: [Novibet, "Novi Bet", "Novi.Bet", "Novibet Brasil"]
+      - canonical: BetMGM
+        aliases: [BetMGM, "Bet MGM", "BetMGM Brasil"]
+      - canonical: BetBoom
+        aliases: [BetBoom, "Bet Boom", "Bet.Boom"]
+      - canonical: bet365
+        aliases: [bet365, "Bet 365", "Bet365", "bet365 Brasil"]
+      - canonical: Betnacional
+        aliases: [Betnacional, "Bet Nacional", "Bet.Nacional", "Betnacional Brasil"]
+      - canonical: Aposta Ganha
+        aliases: ["Aposta Ganha", ApostaGanha, "Aposta.Ganha", "ApostaGanha Brasil"]
+
+# ---------------------------------------------------------------------------
+# Reglas por marca (overrides + ampliaciones)
+# ---------------------------------------------------------------------------
+
+brands:
+  # Hereda automáticamente la lista igaming_pt_br vía applies_to_brands.
+  cassino-bet:
+    inherits_from: [industries.igaming_pt_br]
+    additional_competitors: []
+    excluded_from_industry: []
+  vera-bet:
+    inherits_from: [industries.igaming_pt_br]
+    additional_competitors: []
+    excluded_from_industry: []
+
+  # Pendientes de definir (handover futuro):
+  armor-corp:
+    pending: true
+    note: "Industria por confirmar; lista de competidores pendiente."
+  doug-construction:
+    pending: true
+    note: "Industria por confirmar; lista de competidores pendiente."
+  educa-college-prep:
+    pending: true
+    note: "Industria por confirmar; lista de competidores pendiente."
+  floty:
+    pending: true
+    note: "Industria por confirmar; lista de competidores pendiente."
+  holisteek:
+    pending: true
+    note: "Industria por confirmar; lista de competidores pendiente."
+  leasy:
+    pending: true
+    note: "Industria por confirmar; lista de competidores pendiente."
+  vozy-ai:
+    pending: false
+    country: CO
+    language: es-CO
+    industry: "IA Conversacional B2B — LATAM"
+    note: "Brand-voice redactado en propuesta 07. Lista de competidores definida. Ver Regla #0 en brand-voice."
+    additional_competitors:
+      - canonical: Kore.ai
+        aliases: ["Kore.ai", "Kore AI", "Kore"]
+      - canonical: Yellow.ai
+        aliases: ["Yellow.ai", "Yellow AI", "Yellow Messenger"]
+      - canonical: IBM Watson Assistant
+        aliases: ["IBM Watson", "Watson Assistant", "IBM Watson Assistant"]
+      - canonical: Google Contact Center AI
+        aliases: ["Google CCAI", "Contact Center AI", "Google Contact Center AI", "CCAI"]
+      - canonical: Amazon Connect
+        aliases: ["Amazon Connect", "AWS Connect"]
+      - canonical: Microsoft Nuance
+        aliases: ["Nuance", "Microsoft Nuance", "Nuance Communications"]
+      - canonical: Avaya
+        aliases: ["Avaya", "Avaya OneCloud"]
+      - canonical: Genesys
+        aliases: ["Genesys", "Genesys Cloud", "Genesys Digital"]
+      - canonical: Talkdesk
+        aliases: ["Talkdesk"]
+      - canonical: Twilio Flex
+        aliases: ["Twilio", "Twilio Flex"]
+      - canonical: LivePerson
+        aliases: ["LivePerson", "LiveEngage"]
+      - canonical: NICE inContact
+        aliases: ["NICE", "inContact", "NICE inContact", "NICE CXone"]
+      - canonical: Salesforce Einstein
+        aliases: ["Salesforce Einstein", "Einstein Bots", "Agentforce"]
+      - canonical: Zendesk AI
+        aliases: ["Zendesk AI", "Zendesk Suite"]
+      - canonical: Botpress
+        aliases: ["Botpress"]
+
+# ---------------------------------------------------------------------------
+# Excepciones autorizadas
+# ---------------------------------------------------------------------------
+
+exceptions: []
+# Formato de cada entrada:
+# - id: "EX-YYYY-NN"
+#   brand: <brand_slug>
+#   competitor: <canonical_name>
+#   scope: "alcance de la excepción (URL/tema/contenido específico)"
+#   authorized_by: "<persona o rol>"
+#   authorized_at: "YYYY-MM-DD"
+#   expires_at: "YYYY-MM-DD"
+#   reason: "motivo de negocio"
+
+# ---------------------------------------------------------------------------
+# Términos permitidos que conviene NO confundir con competidores
+# ---------------------------------------------------------------------------
+
+permitted_terms:
+  - term: "Pix"
+    context: "Método de pago instantáneo del Banco Central do Brasil. Universalmente permitido cuando no aparece como parte compuesta de un nombre de marca."
+  - term: "stake"
+    context: "Sustantivo común del inglés/terminología iGaming = monto apostado. Permitido en minúscula y fuera de contexto de marca."
+  - term: ".bet.br"
+    context: "Convención regulatoria brasileña. Permitida en discusiones de licencia y dominio, no como referencia a operador."
+  - term: "SPA/MF"
+    context: "Secretaria de Prêmios e Apostas — ente regulador. Permitido."
+  - term: "SIGAP"
+    context: "Sistema de Gestão de Apostas. Permitido."
+
+# ---------------------------------------------------------------------------
+# Estrategia de matching para el contract-validator
+# ---------------------------------------------------------------------------
+
+matching:
+  case_sensitive: false
+  word_boundary: true
+  default_strategy: exact_alias
+  # Para entradas con `match_strategy: requires_brand_context`, el match exige
+  # un sufijo de marca (.com, Brasil, Casino, Cassino, Bet, .bet.br) inmediatamente
+  # después del canonical, separado por espacio o punto.
+  brand_context_suffixes:
+    - ".com"
+    - "Brasil"
+    - "Casino"
+    - "Cassino"
+    - "Bet"
+    - ".bet.br"
+    - "casino"
+    - "cassino"
+    - "bet"
+
+# ---------------------------------------------------------------------------
+# Acción del contract-validator ante coincidencia
+# ---------------------------------------------------------------------------
+
+enforcement:
+  on_match:
+    severity: high
+    blocking_in_production: true
+    blocking_in_controlled_test: true
+    blocking_in_dry_run: false
+    error_code: "forbidden_competitor_mentioned"
+    alert_type: "forbidden_competitor_mentioned"
+    next_step: "route to final_repair (max 2 retries); if still contaminated -> failed status, escalate to human."
