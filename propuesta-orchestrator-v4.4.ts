@@ -44,6 +44,16 @@ function footerZoneLabels(language: string) {
     intent: "Intenção de busca", audience: "Público-alvo", angle: "Ângulo editorial",
     targetLength: "Extensão alvo", metaTitle: "Meta title", metaDescription: "Meta description",
     structure: "Estrutura do artigo", faqQuestions: "Perguntas frequentes",
+    seoOptimization: "Otimização SEO",
+    metaOg: "Meta & Open Graph", seoChecklist: "Checklist SEO", seoImages: "Imagens — Alt tags",
+    featuredImageNote: "A imagem destacada (og_image_url) é gerenciada pelo image skill.",
+    noImagesFound: "Nenhuma imagem encontrada no HTML do artigo.",
+    altCurrent: "Alt atual", altSuggested: "Alt sugerido", titleAttr: "Title", chars: "chars",
+    checkH1Present: "H1 presente no artigo", checkKwInH1: "Keyword no H1",
+    checkKwInMeta: "Keyword no meta title", checkKwInDesc: "Keyword na meta description",
+    checkMetaTitleLen: "Meta title (ideal 50–60)", checkMetaDescLen: "Meta description (ideal 140–160)",
+    checkFaq: "FAQ presente", checkCta: "CTA presente", checkSlug: "Slug definido",
+    checkWordCount: "Contagem de palavras", ogImageNote: "Gerenciada pelo image skill",
   };
   if (lang === "en" || lang === "en-us") return {
     assets: "Assets", customerJourney: "Customer Journey", editorialLogic: "Editorial Logic",
@@ -56,6 +66,16 @@ function footerZoneLabels(language: string) {
     intent: "Search intent", audience: "Target audience", angle: "Editorial angle",
     targetLength: "Target length", metaTitle: "Meta title", metaDescription: "Meta description",
     structure: "Article structure", faqQuestions: "FAQ questions",
+    seoOptimization: "SEO Optimization",
+    metaOg: "Meta & Open Graph", seoChecklist: "SEO Checklist", seoImages: "Images — Alt tags",
+    featuredImageNote: "The featured image (og_image_url) is managed by the image skill.",
+    noImagesFound: "No images found in the article HTML.",
+    altCurrent: "Current alt", altSuggested: "Suggested alt", titleAttr: "Title", chars: "chars",
+    checkH1Present: "H1 present in article", checkKwInH1: "Keyword in H1",
+    checkKwInMeta: "Keyword in meta title", checkKwInDesc: "Keyword in meta description",
+    checkMetaTitleLen: "Meta title (ideal 50–60)", checkMetaDescLen: "Meta description (ideal 140–160)",
+    checkFaq: "FAQ present", checkCta: "CTA present", checkSlug: "Slug defined",
+    checkWordCount: "Word count", ogImageNote: "Managed by image skill",
   };
   return {
     assets: "Assets", customerJourney: "Customer Journey", editorialLogic: "Lógica del contenido",
@@ -68,6 +88,16 @@ function footerZoneLabels(language: string) {
     intent: "Intención de búsqueda", audience: "Audiencia objetivo", angle: "Ángulo editorial",
     targetLength: "Extensión objetivo", metaTitle: "Meta title", metaDescription: "Meta description",
     structure: "Estructura del artículo", faqQuestions: "Preguntas frecuentes",
+    seoOptimization: "Optimización SEO",
+    metaOg: "Meta & Open Graph", seoChecklist: "Checklist SEO", seoImages: "Imágenes — Alt tags",
+    featuredImageNote: "La imagen destacada (og_image_url) es gestionada por el image skill.",
+    noImagesFound: "No se encontraron imágenes en el HTML del artículo.",
+    altCurrent: "Alt actual", altSuggested: "Alt sugerido", titleAttr: "Title", chars: "chars",
+    checkH1Present: "H1 presente en el artículo", checkKwInH1: "Keyword principal en H1",
+    checkKwInMeta: "Keyword en meta title", checkKwInDesc: "Keyword en meta description",
+    checkMetaTitleLen: "Meta title (ideal 50–60)", checkMetaDescLen: "Meta description (ideal 140–160)",
+    checkFaq: "FAQ presente", checkCta: "CTA presente", checkSlug: "Slug definido",
+    checkWordCount: "Conteo de palabras", ogImageNote: "Gestionada por image skill",
   };
 }
 
@@ -133,7 +163,7 @@ Return ONLY valid JSON, no markdown:
 }`;
 }
 
-function buildFooterZone(cj: J, el: J, c: Contract, language: string): string {
+function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: string, brand: string, language: string): string {
   const L = footerZoneLabels(language);
   const uid = "fz" + Date.now().toString(36);
 
@@ -232,6 +262,110 @@ function buildFooterZone(cj: J, el: J, c: Contract, language: string): string {
   const elFallbackStr = !el.why_structure && !el.target_reader_profile ? '<div class="seo-fz-el-block"><p><strong>' + L.intent + ":</strong> " + esc(String(c.intent || "—")) + "</p><p><strong>" + L.audience + ":</strong> " + esc(String(c.audience || "—")) + "</p><p><strong>" + L.angle + ":</strong> " + esc(String(c.angle || "—")) + "</p></div>" : "";
   const elHtml = '<div class="seo-fz-el">' + elWhyStr + elIntentStr + elReaderStr + elDistStr + elDecisionsStr + elConvStr + elQualStr + elFallbackStr + "</div>";
 
+  // ── SEO OPTIMIZATION TAB ─────────────────────────────────────
+  const seoNorm = function(s: string) {
+    return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  };
+  const kw = seoNorm(c.keyword || "");
+  const mtLen = (c.metaTitle || "").length;
+  const mdLen = (c.metaDescription || "").length;
+  const ogTitle = c.metaTitle || c.h1 || "—";
+  const ogDesc = c.metaDescription || "—";
+
+  const charBadge = function(len: number, idealMin: number, idealMax: number) {
+    const cls = len >= idealMin && len <= idealMax ? "ok" : (len >= idealMin - 15 && len <= idealMax + 20 ? "warn" : "err");
+    return '<span class="seo-fz-seo-badge seo-fz-seo-badge--' + cls + '">' + len + " " + L.chars + "</span>";
+  };
+
+  const checkItem = function(state: "ok" | "warn" | "err", label: string) {
+    const icon = state === "ok" ? "✅" : state === "warn" ? "⚠️" : "❌";
+    return '<li class="seo-fz-seo-check seo-fz-seo-check--' + state + '">' + icon + " " + esc(label) + "</li>";
+  };
+
+  const kwInH1 = !!kw && seoNorm(c.h1 || "").includes(kw);
+  const kwInMeta = !!kw && seoNorm(c.metaTitle || "").includes(kw);
+  const kwInDesc = !!kw && seoNorm(c.metaDescription || "").includes(kw);
+  const mtState: "ok"|"warn"|"err" = mtLen >= 50 && mtLen <= 60 ? "ok" : (mtLen >= 40 && mtLen <= 70 ? "warn" : "err");
+  const mdState: "ok"|"warn"|"err" = mdLen >= 140 && mdLen <= 160 ? "ok" : (mdLen >= 120 && mdLen <= 175 ? "warn" : "err");
+  const faqOk = c.faq.length > 0 && val.missingFaq.length === 0;
+  const wcMin = c.min || 0;
+  const wcMax = c.max || 0;
+  const wcOk = (!wcMin || val.wordCount >= wcMin) && (!wcMax || val.wordCount <= wcMax);
+  const wcWarn = !wcOk && wcMin > 0 && val.wordCount >= Math.round(wcMin * 0.88);
+  const wcLabel = L.checkWordCount + ": " + val.wordCount + (wcMin ? " / " + wcMin + (wcMax ? "–" + wcMax : "+") : "");
+
+  const checklistHtml = "<ul class=\"seo-fz-seo-checklist\">" +
+    checkItem(!val.missingH1 ? "ok" : "err", L.checkH1Present) +
+    checkItem(kwInH1 ? "ok" : (kw ? "err" : "warn"), L.checkKwInH1) +
+    checkItem(kwInMeta ? "ok" : (kw && c.metaTitle ? "err" : "warn"), L.checkKwInMeta) +
+    checkItem(kwInDesc ? "ok" : (kw && c.metaDescription ? "warn" : "warn"), L.checkKwInDesc) +
+    checkItem(mtState, L.checkMetaTitleLen + " (" + mtLen + " " + L.chars + ")") +
+    checkItem(mdState, L.checkMetaDescLen + " (" + mdLen + " " + L.chars + ")") +
+    checkItem(faqOk ? "ok" : (c.faq.length > 0 ? "warn" : "err"), L.checkFaq + (c.faq.length ? " (" + c.faq.length + ")" : "")) +
+    checkItem(!val.missingCta ? "ok" : "warn", L.checkCta) +
+    checkItem(c.slug ? "ok" : "warn", L.checkSlug) +
+    checkItem(wcOk ? "ok" : (wcWarn ? "warn" : "err"), wcLabel) +
+    "</ul>";
+
+  // Extract images from article HTML
+  const imgMatches = Array.from(articleHtml.matchAll(/<img[^>]*>/gi));
+  const imgRows: string[] = imgMatches.map(function(m) {
+    const tag = m[0];
+    const getA = function(attr: string) {
+      const r1 = tag.match(new RegExp(attr + '\\s*=\\s*"([^"]*)"', 'i'));
+      if (r1) return r1[1];
+      const r2 = tag.match(new RegExp(attr + "\\s*=\\s*'([^']*)'", 'i'));
+      return r2 ? r2[1] : "";
+    };
+    const src = getA('src');
+    if (!src || src.startsWith('data:')) return "";
+    const alt = getA('alt');
+    const title = getA('title');
+    const srcShort = src.length > 55 ? "…" + src.slice(-52) : src;
+    const suggestedAlt = alt ? alt : (c.keyword ? c.keyword + (brand ? " — " + brand : "") : (brand || ""));
+    return '<div class="seo-fz-seo-img-row">' +
+      '<div class="seo-fz-seo-img-src"><code>' + esc(srcShort) + "</code></div>" +
+      '<div class="seo-fz-seo-img-fields">' +
+      '<span class="seo-fz-seo-img-label">' + L.altCurrent + '</span>' +
+      '<span class="seo-fz-seo-img-val' + (alt ? "" : " seo-fz-seo-img-val--empty") + '">' + (alt ? esc(alt) : "—") + "</span>" +
+      '<span class="seo-fz-seo-img-label">' + L.altSuggested + '</span>' +
+      '<span class="seo-fz-seo-img-val seo-fz-seo-img-val--suggested">' + esc(suggestedAlt) + "</span>" +
+      (title ? '<span class="seo-fz-seo-img-label">' + L.titleAttr + '</span><span class="seo-fz-seo-img-val">' + esc(title) + "</span>" : "") +
+      "</div></div>";
+  }).filter(Boolean);
+
+  const imgsHtml = imgRows.length
+    ? imgRows.join("")
+    : '<p class="seo-fz-seo-no-imgs">' + esc(L.noImagesFound) + "</p>";
+
+  const seoHtml = '<div class="seo-fz-seo">' +
+    '<div class="seo-fz-seo-section">' +
+    '<h3 class="seo-fz-seo-section-title">' + L.metaOg + "</h3>" +
+    '<div class="seo-fz-seo-meta-grid">' +
+    '<div class="seo-fz-seo-meta-field seo-fz-seo-meta-field--full">' +
+    '<div class="seo-fz-seo-meta-header"><span class="seo-fz-seo-meta-label">Meta title</span>' + charBadge(mtLen, 50, 60) + "</div>" +
+    '<div class="seo-fz-seo-meta-value">' + esc(c.metaTitle || "—") + "</div></div>" +
+    '<div class="seo-fz-seo-meta-field seo-fz-seo-meta-field--full">' +
+    '<div class="seo-fz-seo-meta-header"><span class="seo-fz-seo-meta-label">Meta description</span>' + charBadge(mdLen, 140, 160) + "</div>" +
+    '<div class="seo-fz-seo-meta-value">' + esc(c.metaDescription || "—") + "</div></div>" +
+    '<div class="seo-fz-seo-meta-field">' +
+    '<div class="seo-fz-seo-meta-header"><span class="seo-fz-seo-meta-label">H1</span></div>' +
+    '<div class="seo-fz-seo-meta-value">' + esc(c.h1 || "—") + "</div></div>" +
+    '<div class="seo-fz-seo-meta-field">' +
+    '<div class="seo-fz-seo-meta-header"><span class="seo-fz-seo-meta-label">Slug</span></div>' +
+    '<div class="seo-fz-seo-meta-value seo-fz-seo-meta-value--slug">' + esc(c.slug || "—") + "</div></div>" +
+    '<div class="seo-fz-seo-og seo-fz-seo-meta-field--full">' +
+    '<div class="seo-fz-seo-og-title">Open Graph</div>' +
+    '<div class="seo-fz-seo-og-row"><code>og:title</code><span>' + esc(ogTitle) + "</span></div>" +
+    '<div class="seo-fz-seo-og-row"><code>og:description</code><span>' + esc(ogDesc.slice(0, 120) + (ogDesc.length > 120 ? "…" : "")) + "</span></div>" +
+    '<div class="seo-fz-seo-og-row"><code>og:type</code><span>article</span></div>' +
+    '<div class="seo-fz-seo-og-row"><code>og:image</code><span class="seo-fz-seo-og-note">' + esc(L.ogImageNote) + "</span></div>" +
+    "</div></div></div>" +
+    '<div class="seo-fz-seo-section"><h3 class="seo-fz-seo-section-title">' + L.seoChecklist + "</h3>" + checklistHtml + "</div>" +
+    '<div class="seo-fz-seo-section"><h3 class="seo-fz-seo-section-title">' + L.seoImages + "</h3>" +
+    '<p class="seo-fz-seo-img-note">' + esc(L.featuredImageNote) + "</p>" +
+    imgsHtml + "</div></div>";
+
   // ── STYLES ─────────────────────────────────────────────────────
   const styles = `<style data-fz="1">
 .seo-fz-sep{margin:48px 0 0;padding:0}
@@ -284,6 +418,42 @@ function buildFooterZone(cj: J, el: J, c: Contract, language: string): string {
   .seo-fz-cj-arrow{transform:rotate(90deg);align-self:flex-start;padding:4px 0}
   .seo-fz-el{grid-template-columns:1fr}
 }
+.seo-fz-seo{display:flex;flex-direction:column;gap:24px}
+.seo-fz-seo-section{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px}
+.seo-fz-seo-section-title{margin:0 0 16px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#64748b}
+.seo-fz-seo-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.seo-fz-seo-meta-field{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px}
+.seo-fz-seo-meta-field--full{grid-column:1/-1}
+.seo-fz-seo-meta-header{display:flex;align-items:center;justify-content:space-between;margin:0 0 6px}
+.seo-fz-seo-meta-label{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#94a3b8}
+.seo-fz-seo-meta-value{font-size:13px;color:#1e293b;line-height:1.5}
+.seo-fz-seo-meta-value--slug{font-family:monospace;font-size:12px;color:#1d4ed8}
+.seo-fz-seo-badge{padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
+.seo-fz-seo-badge--ok{background:#dcfce7;color:#16a34a}
+.seo-fz-seo-badge--warn{background:#fef9c3;color:#92400e}
+.seo-fz-seo-badge--err{background:#fee2e2;color:#dc2626}
+.seo-fz-seo-og{background:#f0f4ff;border:1px solid #c7d2fe;border-radius:8px;padding:14px}
+.seo-fz-seo-og-title{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#6366f1;margin:0 0 10px}
+.seo-fz-seo-og-row{display:flex;gap:10px;align-items:baseline;margin:0 0 6px;font-size:12px}
+.seo-fz-seo-og-row code{flex:0 0 120px;color:#6366f1;font-size:11px}
+.seo-fz-seo-og-row span{color:#334155;line-height:1.4}
+.seo-fz-seo-og-note{color:#94a3b8;font-style:italic}
+.seo-fz-seo-checklist{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.seo-fz-seo-check{font-size:13px;padding:8px 12px;border-radius:8px;line-height:1.4}
+.seo-fz-seo-check--ok{background:#f0fdf4;color:#15803d}
+.seo-fz-seo-check--warn{background:#fefce8;color:#92400e}
+.seo-fz-seo-check--err{background:#fff1f2;color:#be123c}
+.seo-fz-seo-img-note{margin:0 0 16px;font-size:12px;color:#94a3b8;font-style:italic}
+.seo-fz-seo-no-imgs{font-size:13px;color:#94a3b8;font-style:italic;margin:0}
+.seo-fz-seo-img-row{border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;margin:0 0 10px;background:#fff}
+.seo-fz-seo-img-src{margin:0 0 10px;overflow:hidden}
+.seo-fz-seo-img-src code{font-size:11px;color:#64748b;word-break:break-all}
+.seo-fz-seo-img-fields{display:grid;grid-template-columns:100px 1fr;gap:4px 10px;align-items:baseline;font-size:12px}
+.seo-fz-seo-img-label{font-weight:600;color:#94a3b8;text-transform:uppercase;font-size:10px;letter-spacing:.04em}
+.seo-fz-seo-img-val{color:#334155;line-height:1.4}
+.seo-fz-seo-img-val--empty{color:#94a3b8;font-style:italic}
+.seo-fz-seo-img-val--suggested{color:#1d4ed8;font-weight:500}
+@media(max-width:640px){.seo-fz-seo-meta-grid{grid-template-columns:1fr}.seo-fz-seo-og-row{flex-wrap:wrap}.seo-fz-seo-og-row code{flex:none}}
 </style>`;
 
   // ── SCRIPT ─────────────────────────────────────────────────────
@@ -318,11 +488,13 @@ function buildFooterZone(cj: J, el: J, c: Contract, language: string): string {
     <button class="seo-fz-tab seo-fz-tab--active" role="tab" data-fz-target="${uid}-assets" aria-selected="true">${L.assets}</button>
     <button class="seo-fz-tab" role="tab" data-fz-target="${uid}-cj" aria-selected="false">${L.customerJourney}</button>
     <button class="seo-fz-tab" role="tab" data-fz-target="${uid}-el" aria-selected="false">${L.editorialLogic}</button>
+    <button class="seo-fz-tab" role="tab" data-fz-target="${uid}-seo" aria-selected="false">${L.seoOptimization}</button>
   </nav>
   <div class="seo-fz-panels">
     <div id="${uid}-assets" class="seo-fz-panel seo-fz-panel--active" role="tabpanel">${assetsHtml}</div>
     <div id="${uid}-cj" class="seo-fz-panel" role="tabpanel">${cjHtml}</div>
     <div id="${uid}-el" class="seo-fz-panel" role="tabpanel">${elHtml}</div>
+    <div id="${uid}-seo" class="seo-fz-panel" role="tabpanel">${seoHtml}</div>
   </div>
 </section>
 ${script}`;
@@ -418,11 +590,11 @@ serve(async (req) => {
               }).then(r => r.ok ? r.json().then(d => JSON.parse(d?.choices?.[0]?.message?.content || "{}")) : {}).catch(() => ({}))
             : Promise.resolve({}),
         ]);
-        footerZone = buildFooterZone(cjData, elData, contract, language);
+        footerZone = buildFooterZone(cjData, elData, contract, val, article, String(project?.nombremarca || ""), language);
         article = assemble(contract, parts, language, footerZone);
         await log(env, runId, item.id, "footer_zone", "footer-zone-generator", "ok", { cj_stages: Array.isArray(cjData.stages) ? cjData.stages.length : 0, el_decisions: Array.isArray(elData.key_editorial_decisions) ? elData.key_editorial_decisions.length : 0 });
       } catch (fze) {
-        footerZone = buildFooterZone({}, {}, contract, language);
+        footerZone = buildFooterZone({}, {}, contract, val, article, String(project?.nombremarca || ""), language);
         article = assemble(contract, parts, language, footerZone);
         await log(env, runId, item.id, "footer_zone", "footer-zone-generator", "error", { message: err(fze) }).catch(() => {});
       }
