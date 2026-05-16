@@ -389,7 +389,35 @@ Total de eventos para `seo-content-swarm-engine`: 22. Los más relevantes:
 - `handover_activated`
 - `resource_loading_contract_registered`
 
-### 8.4 Comandos útiles de diagnóstico
+### 8.4 Comparación con repositorio `Agents_Automations` (2026-05-16)
+
+**Estado del repo antes del análisis:**
+
+| Carpeta | Contenido |
+|---|---|
+| `automations/` | Solo `_template/.gitkeep` |
+| `agents/` | Solo `_template/.gitkeep` |
+| `skills/` | Solo `_template/.gitkeep` |
+| `briefs/` | Vacía (`.gitkeep`) |
+| `handovers/` | 3 archivos (inicio proyecto, RLS Light_House, este análisis) |
+
+**Estado en Supabase `automation_registry`:** 5 automatizaciones registradas. **Gap: ninguna estaba reflejada como carpeta bajo gobierno.**
+
+**Acción tomada en esta sesión:**
+
+1. Creada `automations/seo-content-swarm-engine/README.md` como plano de control de esta automatización (la primera bajo gobierno).
+2. Actualizado el `README.md` raíz con el inventario comparativo Supabase ↔ repo.
+3. Este informe queda enlazado desde la carpeta de la automatización como su informe técnico canónico.
+
+**Decisiones pendientes para el dueño del producto sobre las otras 4 automatizaciones:**
+
+- `automation-template`: probablemente no requiere carpeta propia (es plantilla).
+- `example-shared-automation`: decidir si autorizar activación o archivar.
+- `validation-shared-runtime-001` y `002`: decidir si reactivar, completar o retirar.
+
+Una vez tomadas esas decisiones, las que sigan vivas deben tener su propia carpeta `automations/<key>/` con su README de gobierno equivalente al de `seo-content-swarm-engine`.
+
+### 8.5 Comandos útiles de diagnóstico
 
 ```sql
 -- Errores recientes por step
