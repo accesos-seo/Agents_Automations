@@ -1,0 +1,271 @@
+{
+  "name": "Crear y Registrar Reunion - DRY RUN",
+  "meta": {
+    "n8n_workflow_id": "2eSovJaJM9I7YKwh",
+    "exported_at": "2026-05-16",
+    "phase": "dry_run",
+    "webhook_path": "crear-reunion-dry-run",
+    "dry_run_executions_validated": [
+      "43759"
+    ],
+    "pending": [
+      "whatsapp_sender_number"
+    ]
+  },
+  "nodes": [
+    {
+      "id": "n01-webhook",
+      "name": "Webhook: Crear Reunion",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "crear-reunion-dry-run",
+        "options": {}
+      }
+    },
+    {
+      "id": "n02-prep",
+      "name": "Code: Preparar Datos DRY RUN",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || {};\nconst PROYECTO_ID = '8c2d20d4-c635-4878-8e1b-f8e3d09d377b';\nconst CLIENT_ID   = '1eb0705c-2073-4ef6-9a62-fead0b132691';\nconst ROBERT_ID   = '0d2591a5-7b38-41bd-8ca3-54ac4548a4bc';\nconst ROBERT_EMAIL = 'robert@seolabagency.com';\nconst ROBERT_PHONE = '573183031286';\nconst ROBERT_SLACK = 'U052YLDC2GJ';\nconst title = body.title || '[DRY RUN] Reunion Operativa - SeoLab Agency';\nconst meeting_type = body.meeting_type || 'OPERATIVA';\nconst description = body.description || 'Prueba automatica de la automatizacion crear-reunion.';\nlet meeting_date = body.meeting_date;\nif (!meeting_date) {\n  const today = new Date();\n  const dow = today.getDay();\n  const diff = dow <= 5 ? (5 - dow) || 7 : 6;\n  const fri = new Date(today);\n  fri.setDate(today.getDate() + diff);\n  meeting_date = fri.toISOString().split('T')[0];\n}\nconst meeting_time = body.meeting_time || '08:30:00';\nconst [hh, mm] = meeting_time.split(':').map(Number);\nconst endHH = String((hh + 1) % 24).padStart(2, '0');\nconst end_time = `${endHH}:${String(mm).padStart(2, '0')}:00`;\nreturn [{ json: {\n  proyecto_id: PROYECTO_ID, client_id: CLIENT_ID, robert_id: ROBERT_ID,\n  title, meeting_type, description, meeting_date, meeting_time,\n  participants: [ROBERT_ID],\n  calendar_start: `${meeting_date}T${meeting_time}-05:00`,\n  calendar_end: `${meeting_date}T${end_time}-05:00`,\n  notify_email: ROBERT_EMAIL, notify_phone: ROBERT_PHONE, notify_slack: ROBERT_SLACK\n}}];"
+      }
+    },
+    {
+      "id": "n03-gcal",
+      "name": "Google Calendar: Crear Evento",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.2,
+      "position": [
+        480,
+        300
+      ],
+      "continueOnFail": true,
+      "parameters": {
+        "operation": "create",
+        "calendar": {
+          "__rl": true,
+          "value": "accesos@seolabagency.com",
+          "mode": "list"
+        },
+        "start": "={{ $json.calendar_start }}",
+        "end": "={{ $json.calendar_end }}",
+        "additionalFields": {
+          "summary": "={{ $json.title }}",
+          "description": "={{ $json.description }}",
+          "attendeesUi": {
+            "attendeesValues": [
+              {
+                "email": "={{ $json.notify_email }}"
+              }
+            ]
+          },
+          "conferenceDataUi": {
+            "conferenceDataValues": {
+              "conferenceSolution": "hangoutsMeet"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "oJQor7PaXmyCq9v8",
+          "name": "Google Calendar API"
+        }
+      }
+    },
+    {
+      "id": "n04-extract",
+      "name": "Code: Extraer Meet URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const gcal = $input.item.json;\nconst prep = $('Code: Preparar Datos DRY RUN').item.json;\nconst hasError = gcal.error !== undefined;\nreturn [{ json: {\n  ...prep,\n  meet_url: !hasError ? (gcal.hangoutLink || null) : null,\n  google_calendar_event_id: !hasError ? (gcal.id || null) : null,\n  gcal_html_link: !hasError ? (gcal.htmlLink || null) : null,\n  gcal_success: !hasError\n}}];"
+      }
+    },
+    {
+      "id": "n05-postgres",
+      "name": "Postgres: Insertar Reunion",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        960,
+        300
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO public.project_meetings (proyecto_id, client_id, title, meeting_date, meeting_time, meeting_type, description, participants, status, leader_id, meet_url, google_calendar_event_id, reminder_status) VALUES ('{{ $json.proyecto_id }}', '{{ $json.client_id }}', '{{ $json.title }}', '{{ $json.meeting_date }}', '{{ $json.meeting_time }}', '{{ $json.meeting_type }}', '{{ $json.description }}', '{{ JSON.stringify($json.participants) }}'::jsonb, 'scheduled', '{{ $json.robert_id }}', NULLIF('{{ $json.meet_url }}', 'null'), NULLIF('{{ $json.google_calendar_event_id }}', 'null'), 'pending') RETURNING id;",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "MVXof1EtFFRGqrcB",
+          "name": "Postgres Light_House"
+        }
+      }
+    },
+    {
+      "id": "n06-merge",
+      "name": "Code: Datos para Notificacion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const pg = $input.item.json;\nconst prev = $('Code: Extraer Meet URL').item.json;\nreturn [{ json: {\n  meeting_id: pg.id, title: prev.title, meeting_date: prev.meeting_date,\n  meeting_time: prev.meeting_time, meeting_type: prev.meeting_type,\n  proyecto_nombre: 'SeoLab Agency',\n  meet_url: prev.meet_url || 'Google Calendar no devolvio Meet link',\n  gcal_success: prev.gcal_success, gcal_html_link: prev.gcal_html_link,\n  notify_slack: prev.notify_slack, notify_phone: prev.notify_phone, notify_email: prev.notify_email\n}}];"
+      }
+    },
+    {
+      "id": "n07-slack",
+      "name": "Slack: DM Robert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1440,
+        180
+      ],
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "user",
+        "user": {
+          "__rl": true,
+          "value": "={{ $json.notify_slack }}",
+          "mode": "id"
+        },
+        "text": "=[DRY RUN] Reunion creada y registrada OK\\n\\n{{ $json.title }}\\nFecha: {{ $json.meeting_date }}\\nHora: {{ $json.meeting_time }}\\nMeet: {{ $json.meet_url }}\\nID Supabase: {{ $json.meeting_id }}",
+        "otherOptions": {}
+      },
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "mZ3NlpjgMP6RM5fM",
+          "name": "Orbit SeoLab"
+        }
+      }
+    },
+    {
+      "id": "n08-whatsapp",
+      "name": "Evolution API: WhatsApp Robert",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        420
+      ],
+      "continueOnFail": true,
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "HeduinA",
+        "remoteJid": "={{ $('Code: Datos para Notificacion').item.json.notify_phone }}",
+        "messageText": "=[DRY RUN] Reunion Registrada OK\\n{{ $('Code: Datos para Notificacion').item.json.title }}\\n{{ $('Code: Datos para Notificacion').item.json.meeting_date }}\\nMeet: {{ $('Code: Datos para Notificacion').item.json.meet_url }}",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "mrpYMRyyf2Zc6CD7",
+          "name": "Evolution HeduinA"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook: Crear Reunion": {
+      "main": [
+        [
+          {
+            "node": "Code: Preparar Datos DRY RUN",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Preparar Datos DRY RUN": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar: Crear Evento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar: Crear Evento": {
+      "main": [
+        [
+          {
+            "node": "Code: Extraer Meet URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Extraer Meet URL": {
+      "main": [
+        [
+          {
+            "node": "Postgres: Insertar Reunion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres: Insertar Reunion": {
+      "main": [
+        [
+          {
+            "node": "Code: Datos para Notificacion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Datos para Notificacion": {
+      "main": [
+        [
+          {
+            "node": "Slack: DM Robert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack: DM Robert": {
+      "main": [
+        [
+          {
+            "node": "Evolution API: WhatsApp Robert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Bogota",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  }
+    }
