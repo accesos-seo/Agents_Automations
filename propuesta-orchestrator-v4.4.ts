@@ -7,7 +7,7 @@ type Project = { id:string; nombremarca?:string|null; idioma_objetivo?:string|nu
 type Section = { key:string; kind:"intro"|"h2"|"faq"|"cta"|"expansion"; heading:string; minWords:number; payload?:unknown };
 type Contract = { source:string; extensionRaw:string|null; extensionSource?:string|null; extensionComplianceRule?:string; min:number|null; max:number|null; h1:string|null; slug:string|null; metaTitle:string|null; metaDescription:string|null; keyword:string|null; secondary:string[]; intent:string|null; audience:string|null; angle:string|null; h2:string[]; h2Details:J[]; faq:string[]; cta:string|null; research:string|null; facts:string[]; sections:Section[] };
 type Val = { passed:boolean; wordCount:number; issues:string[]; missingH1:boolean; missingH2:string[]; missingFaq:string[]; missingCta:boolean; missingKeyword:boolean; missingFacts:string[]; extensionRaw:string|null; targetWordMin:number|null; targetWordMax:number|null };
-const VERSION = "4.6";
+const VERSION = "4.7";
 const CORS = { "Access-Control-Allow-Origin":"*", "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods":"POST, OPTIONS" };
 
 function faqHeading(language:string):string{
@@ -531,16 +531,16 @@ serve(async (req) => {
     const seo = dryRun ? {search_intent:contract.intent,content_angle:contract.angle,h1:contract.h1,outline:contract.h2} : await agent(env,"seo-expert",promptSeo(master,contract),"OPENROUTER_MODEL_SEO_EXPERT",45000);
     await log(env,runId,item.id,"seo_expert","seo-expert","ok",redact(seo));
     const parts:string[] = [];
-    for (const section of contract.sections) {
-      const prevMemory = memory(parts.join("\n"));
-      const out = dryRun ? {section_html:mockSection(section,contract)} : await agent(env,`section-${section.key}`,promptSection(master,seo,contract,section,prevMemory,language),"OPENROUTER_MODEL_CONTENT_WRITER",70000);
+    // Write all sections in parallel — eliminates wall-time death from sequential ~150s section loop
+    const sectionResults = await Promise.all(contract.sections.map(async function(section) {
+      const out = dryRun ? {section_html:mockSection(section,contract)} : await agent(env,`section-${section.key}`,promptSection(master,seo,contract,section,"",language),"OPENROUTER_MODEL_CONTENT_WRITER",70000);
       assertKeys(out,["section_html"]);
       const html = clean(String(out.section_html||""));
-      parts.push(html);
-      partialHtml = assemble(contract,parts,language);
-      await log(env,runId,item.id,`section_${section.key}`,"content-writer","ok",{section,section_words:words(strip(html)),total_words:words(strip(partialHtml)),result:redact(out)});
-      if (!dryRun && parts.length % 2 === 0) await patch(env,"content_items",item.id,{article_content:partialHtml,word_count:words(strip(partialHtml)),actual_word_count:words(strip(partialHtml)),status:"in_progress",status_wp_msg:`Borrador parcial (${words(strip(partialHtml))} palabras).`});
-    }
+      await log(env,runId,item.id,`section_${section.key}`,"content-writer","ok",{section,section_words:words(strip(html)),result:redact(out)});
+      return html;
+    }));
+    for (const html of sectionResults) { parts.push(html); }
+    partialHtml = assemble(contract,parts,language);
     let article = assemble(contract,parts,language);
     let val = validate(article,contract);
     await log(env,runId,item.id,"sectioned_contract_gate","contract-validator",val.passed?"ok":"error",val,val.passed?undefined:"error_contract_validation",val.issues.join("; "));
