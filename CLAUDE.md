@@ -26,7 +26,16 @@ Este repo (Agents_Automations) es el plano de gobierno que orquesta lo anterior.
 
 ## 2. Cómo orientarte si llegas nuevo a una sesión
 
-Si vas a tocar la automatización **`seo-content-swarm-engine`** (lo más común hoy), sigue esta secuencia exacta:
+### Inventario de automatizaciones gobernadas
+
+| automation_key | Estado | Descripción corta |
+|---|---|---|
+| [`seo-content-swarm-engine`](automations/seo-content-swarm-engine/) | ✅ Productivo | Pipeline completo brief → artículo → audio → ILS → enriquecimiento → publicación. |
+| [`client-feedback-notifications`](automations/client-feedback-notifications/) | ✅ Productivo | Email de acuse al cliente cuando deja feedback sobre un artículo. Multi-idioma (es/pt/en) desde `cliente_users.language` / `clientes.language`. |
+
+### Cómo orientarte por automatización
+
+Si vas a tocar **`seo-content-swarm-engine`** (lo más común hoy), sigue esta secuencia exacta:
 
 1. **Lee `automations/seo-content-swarm-engine/AGENT_ONBOARDING.md`** — contexto completo del proyecto, estado actual, decisiones tomadas. Reemplaza la necesidad de leer la conversación anterior.
 2. **Lee `automations/seo-content-swarm-engine/AREAS.md`** — el proyecto está dividido en áreas de trabajo (audio, briefs, writer, validator, etc.). Identifica qué área vas a tocar.
