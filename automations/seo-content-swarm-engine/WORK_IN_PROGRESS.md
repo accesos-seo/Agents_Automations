@@ -33,6 +33,7 @@
 | S-012 | H. Política + F. ILS | Claude-chat-enlazado-cj | 2026-05-16 | 2026-05-16 | ✅ Brand voice Vozy AI (Colombia, es-CO) completo — D-009. Países corregidos: Armor Corp/Leasy/Educa → Perú (es-PE). 15 competidores prohibidos añadidos al YAML. AGENT_ONBOARDING actualizado. Solicitud técnica sitemaps corregida. Pendiente del usuario esta semana: URLs sitemaps, categorías WP, clusters por marca. |
 | S-005b | I. Meta + H. Política | Claude-chat-principal | 2026-05-16 15:45 | 2026-05-16 16:30 | ✅ Handover detallado para n8n (S-013) + paquete de aprobación GitHub UI integrado con propuestas 01-07 (S-014). Renumeración tras detectar S-006 a S-012 ya tomados por chats paralelos. PR #2 actualizado. |
 | S-015 | H. Política + I. Meta | Claude-chat-enlazado-cj | 2026-05-16 | 2026-05-16 | ✅ Migración completa de brand voices a Agents_Automations como fuente de verdad única. 9 brand voices creados (brands/). 2 archivos de pipeline creados (pipeline/). CLAUDE.md y AGENT_ONBOARDING actualizados para apuntar a nueva ubicación. D-010 registrado. |
+| S-016 | J. Client Reviewer (nueva área) | Claude-chat-qa-reviewer | 2026-05-16 | 2026-05-16 | ✅ D-009-client implementado: tabla client_article_feedback + RLS (3 políticas) + 2 triggers + Edge Function submit-client-article-feedback v1 ACTIVE. client_approval_status actualizado automáticamente. Pendiente: workflow n8n client-article-feedback-notify. Ver handover 2026-05-16-client-article-feedback.md. |
 
 ---
 
