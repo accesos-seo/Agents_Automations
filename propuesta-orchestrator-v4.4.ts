@@ -7,7 +7,7 @@ type Project = { id:string; nombremarca?:string|null; idioma_objetivo?:string|nu
 type Section = { key:string; kind:"intro"|"h2"|"faq"|"cta"|"expansion"; heading:string; minWords:number; payload?:unknown };
 type Contract = { source:string; extensionRaw:string|null; extensionSource?:string|null; extensionComplianceRule?:string; min:number|null; max:number|null; h1:string|null; slug:string|null; metaTitle:string|null; metaDescription:string|null; keyword:string|null; secondary:string[]; intent:string|null; audience:string|null; angle:string|null; h2:string[]; h2Details:J[]; faq:string[]; cta:string|null; research:string|null; facts:string[]; sections:Section[] };
 type Val = { passed:boolean; wordCount:number; issues:string[]; missingH1:boolean; missingH2:string[]; missingFaq:string[]; missingCta:boolean; missingKeyword:boolean; missingFacts:string[]; extensionRaw:string|null; targetWordMin:number|null; targetWordMax:number|null };
-const VERSION = "4.4";
+const VERSION = "4.5";
 const CORS = { "Access-Control-Allow-Origin":"*", "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods":"POST, OPTIONS" };
 
 function faqHeading(language:string):string{
@@ -566,33 +566,65 @@ serve(async (req) => {
       }
       await log(env,runId,item.id,"final_repair","content-writer",val.passed?"ok":"error",{accepted:val!==beforeRepair,validation:val,previous_validation:beforeRepair,result:redact(out)},val.passed?undefined:"error_contract_validation",val.issues.join("; "));
     }
-    const eeat = dryRun ? {eeat_score:val.passed?80:55,passes:val.passed,issues:val.issues,required_human_review:!val.passed} : await agent(env,"eeat-validator",promptEeat(article,val,contract),"OPENROUTER_MODEL_EEAT_VALIDATOR",45000);
-    await log(env,runId,item.id,"eeat","eeat-validator","ok",redact(eeat));
-
-    // Footer zone generation (Customer Journey + Editorial Logic)
+    // Run EEAT + Customer Journey + Editorial Logic in PARALLEL to save wall-time
+    let eeat: J = { eeat_score: val.passed ? 80 : 55, passes: val.passed, issues: val.issues, required_human_review: !val.passed };
     let footerZone = "";
-    if (!dryRun) {
+
+    if (dryRun) {
+      // dry_run: skip AI calls
+      await log(env, runId, item.id, "eeat", "eeat-validator", "ok", redact(eeat));
+      footerZone = buildFooterZone({}, {}, contract, val, article, String(project?.nombremarca || ""), language);
+      article = assemble(contract, parts, language, footerZone);
+      await log(env, runId, item.id, "footer_zone", "footer-zone-generator", "ok", { dry_run: true }).catch(() => {});
+    } else {
+      const footerModel = Deno.env.get("OPENROUTER_MODEL_FOOTER_ZONE") || Deno.env.get("OPENROUTER_MODEL_CONTENT_WRITER") || "";
+      const orHeaders = {
+        authorization: "Bearer " + env.openRouterKey,
+        "content-type": "application/json",
+        "HTTP-Referer": "https://github.com/accesos-seo/ops-control-plane",
+        "X-Title": "seo-sectioned-engine",
+      };
+      const fetchJson = async function(prompt: string): Promise<J> {
+        if (!footerModel || !env.openRouterKey) return {};
+        try {
+          const ac = new AbortController();
+          const to = setTimeout(() => ac.abort(), 35000);
+          try {
+            const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+              method: "POST",
+              signal: ac.signal,
+              headers: orHeaders,
+              body: JSON.stringify({
+                model: footerModel,
+                messages: [{ role: "system", content: "Respond with valid JSON only. No markdown." }, { role: "user", content: prompt }],
+                response_format: { type: "json_object" },
+              }),
+            });
+            if (!res.ok) return {};
+            const d = await res.json();
+            return JSON.parse(d?.choices?.[0]?.message?.content || "{}");
+          } finally {
+            clearTimeout(to);
+          }
+        } catch { return {}; }
+      };
+
+      const eeatPromise: Promise<J> = agent(env, "eeat-validator", promptEeat(article, val, contract), "OPENROUTER_MODEL_EEAT_VALIDATOR", 30000)
+        .catch(function(e) { return { eeat_score: val.passed ? 80 : 55, passes: val.passed, issues: val.issues, required_human_review: !val.passed, _eeat_error: err(e) }; });
+      const cjPromise: Promise<J> = fetchJson(promptCustomerJourney(master, seo, contract, language));
+      const elPromise: Promise<J> = fetchJson(promptEditorialLogic(master, seo, contract, val, language));
+
+      const [eeatResult, cjData, elData] = await Promise.all([eeatPromise, cjPromise, elPromise]);
+      eeat = eeatResult;
+      await log(env, runId, item.id, "eeat", "eeat-validator", (eeatResult as J)._eeat_error ? "error" : "ok", redact(eeatResult)).catch(() => {});
+
       try {
-        const footerModel = Deno.env.get("OPENROUTER_MODEL_FOOTER_ZONE") || Deno.env.get("OPENROUTER_MODEL_CONTENT_WRITER") || "";
-        const [cjData, elData] = await Promise.all([
-          footerModel
-            ? fetch("https://openrouter.ai/api/v1/chat/completions", {
-                method: "POST",
-                headers: { authorization: `Bearer ${env.openRouterKey}`, "content-type": "application/json", "HTTP-Referer": "https://github.com/accesos-seo/ops-control-plane", "X-Title": "seo-sectioned-engine" },
-                body: JSON.stringify({ model: footerModel, messages: [{ role: "system", content: "Respond with valid JSON only. No markdown." }, { role: "user", content: promptCustomerJourney(master, seo, contract, language) }], response_format: { type: "json_object" } }),
-              }).then(r => r.ok ? r.json().then(d => JSON.parse(d?.choices?.[0]?.message?.content || "{}")) : {}).catch(() => ({}))
-            : Promise.resolve({}),
-          footerModel
-            ? fetch("https://openrouter.ai/api/v1/chat/completions", {
-                method: "POST",
-                headers: { authorization: `Bearer ${env.openRouterKey}`, "content-type": "application/json", "HTTP-Referer": "https://github.com/accesos-seo/ops-control-plane", "X-Title": "seo-sectioned-engine" },
-                body: JSON.stringify({ model: footerModel, messages: [{ role: "system", content: "Respond with valid JSON only. No markdown." }, { role: "user", content: promptEditorialLogic(master, seo, contract, val, language) }], response_format: { type: "json_object" } }),
-              }).then(r => r.ok ? r.json().then(d => JSON.parse(d?.choices?.[0]?.message?.content || "{}")) : {}).catch(() => ({}))
-            : Promise.resolve({}),
-        ]);
         footerZone = buildFooterZone(cjData, elData, contract, val, article, String(project?.nombremarca || ""), language);
         article = assemble(contract, parts, language, footerZone);
-        await log(env, runId, item.id, "footer_zone", "footer-zone-generator", "ok", { cj_stages: Array.isArray(cjData.stages) ? cjData.stages.length : 0, el_decisions: Array.isArray(elData.key_editorial_decisions) ? elData.key_editorial_decisions.length : 0 });
+        await log(env, runId, item.id, "footer_zone", "footer-zone-generator", "ok", {
+          cj_stages: Array.isArray((cjData as J).stages) ? ((cjData as J).stages as J[]).length : 0,
+          el_decisions: Array.isArray((elData as J).key_editorial_decisions) ? ((elData as J).key_editorial_decisions as unknown[]).length : 0,
+        }).catch(() => {});
       } catch (fze) {
         footerZone = buildFooterZone({}, {}, contract, val, article, String(project?.nombremarca || ""), language);
         article = assemble(contract, parts, language, footerZone);
@@ -620,9 +652,9 @@ function plan(min:number|null,h2d:J[],faq:string[],cta:string|null,language:stri
 function stripPreH1(html:string):string{const trimmed=html.trim();if(/^<(h[2-6]|p|ul|ol|table|div|blockquote)/i.test(trimmed))return trimmed;const firstTag=trimmed.search(/<(h[2-6]|p|ul|ol|table|div|blockquote)/i);if(firstTag>0)return trimmed.slice(firstTag);return trimmed;}
 
 function promptSection(master:J,seo:J,c:Contract,s:Section,prev:string,language:string):string{
-  const sectionMax=Math.round(s.minWords*1.15);
+  const sectionMax=Math.round(s.minWords*1.08);
   const globalMax=c.max||c.min||2000;
-  const maxHint=`LÍMITE ESTRICTO DE PALABRAS: esta sección debe tener entre ${s.minWords} y ${sectionMax} palabras. NUNCA más de ${sectionMax}. El artículo completo no debe superar ${globalMax} palabras. Sé conciso, directo y denso en valor. NO rellenes con frases vacías.`;
+  const maxHint = "LÍMITE ABSOLUTO E INNEGOCIABLE: esta sección DEBE tener entre " + s.minWords + " y " + sectionMax + " palabras. Si generas MÁS de " + sectionMax + " palabras, el output será DESCARTADO y la tarea fallará. El artículo completo NO debe superar " + globalMax + " palabras bajo ninguna circunstancia. Cuenta tus palabras antes de devolver. Prioriza calidad y densidad de información sobre volumen. Cada frase debe aportar valor SEO o informativo. NO uses frases de relleno como 'en resumen', 'es importante mencionar', 'cabe destacar', 'por otro lado'. NO repitas ideas con palabras distintas. Si tienes que elegir entre cumplir mínimo o cumplir máximo, cumple SIEMPRE el máximo.";
   let rules="";
   if(s.kind==="intro"){
     rules="REGLA CRÍTICA: El primer carácter de section_html debe ser un tag HTML (<p>, <ul>, etc). Jamás texto plano antes del primer tag. Párrafos máximo 3 líneas. El párrafo de introducción DEBE ser completo, cerrar con </p> y tener al menos 2 oraciones.";
