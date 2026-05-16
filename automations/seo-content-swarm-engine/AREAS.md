@@ -156,8 +156,9 @@
 **Pendientes en esta área:**
 - Decidir destino de los 895 pending: backfill / marcar `skipped` / ignorar.
 - Confirmar que el trigger se dispara correctamente para artículos nuevos.
+- **[D-005 pendiente]** Implementar zona estratégica post-FAQ: nueva Edge Function `seo-content-strategic-zone-skill`, nuevos campos `customer_journey_data`, `editorial_focus_data`, `strategic_zone_status` en `content_items`, HTML/CSS/JS del tab UI. Spec completo en [`propuestas-ops-control-plane/05-article-strategic-zone-SPEC.md`](propuestas-ops-control-plane/05-article-strategic-zone-SPEC.md).
 
-**Áreas con las que choca:** ILS (input).
+**Áreas con las que choca:** ILS (input), Writer (consume article_content generado).
 
 ---
 
