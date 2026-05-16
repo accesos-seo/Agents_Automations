@@ -7,7 +7,7 @@ type Project = { id:string; nombremarca?:string|null; idioma_objetivo?:string|nu
 type Section = { key:string; kind:"intro"|"h2"|"faq"|"cta"|"expansion"; heading:string; minWords:number; payload?:unknown };
 type Contract = { source:string; extensionRaw:string|null; extensionSource?:string|null; extensionComplianceRule?:string; min:number|null; max:number|null; h1:string|null; slug:string|null; metaTitle:string|null; metaDescription:string|null; keyword:string|null; secondary:string[]; intent:string|null; audience:string|null; angle:string|null; h2:string[]; h2Details:J[]; faq:string[]; cta:string|null; research:string|null; facts:string[]; sections:Section[] };
 type Val = { passed:boolean; wordCount:number; issues:string[]; missingH1:boolean; missingH2:string[]; missingFaq:string[]; missingCta:boolean; missingKeyword:boolean; missingFacts:string[]; extensionRaw:string|null; targetWordMin:number|null; targetWordMax:number|null };
-const VERSION = "4.9";
+const VERSION = "4.10";
 const CORS = { "Access-Control-Allow-Origin":"*", "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods":"POST, OPTIONS" };
 
 function faqHeading(language:string):string{
@@ -43,7 +43,7 @@ function footerZoneLabels(language: string) {
     mainKeyword: "Palavra-chave principal", secondaryKeywords: "Palavras-chave secundárias",
     intent: "Intenção de busca", audience: "Público-alvo", angle: "Ângulo editorial",
     targetLength: "Extensão alvo", metaTitle: "Meta title", metaDescription: "Meta description",
-    structure: "Estrutura do artigo", faqQuestions: "Perguntas frequentes",
+    structure: "Estrutura do artigo", faqQuestions: "Perguntas frequentes", generatedImages: "Imagens geradas",
     seoOptimization: "Otimização SEO",
     metaOg: "Meta & Open Graph", seoChecklist: "Checklist SEO", seoImages: "Imagens — Alt tags",
     featuredImageNote: "A imagem destacada (og_image_url) é gerenciada pelo image skill.",
@@ -65,7 +65,7 @@ function footerZoneLabels(language: string) {
     mainKeyword: "Main keyword", secondaryKeywords: "Secondary keywords",
     intent: "Search intent", audience: "Target audience", angle: "Editorial angle",
     targetLength: "Target length", metaTitle: "Meta title", metaDescription: "Meta description",
-    structure: "Article structure", faqQuestions: "FAQ questions",
+    structure: "Article structure", faqQuestions: "FAQ questions", generatedImages: "Generated images",
     seoOptimization: "SEO Optimization",
     metaOg: "Meta & Open Graph", seoChecklist: "SEO Checklist", seoImages: "Images — Alt tags",
     featuredImageNote: "The featured image (og_image_url) is managed by the image skill.",
@@ -87,7 +87,7 @@ function footerZoneLabels(language: string) {
     mainKeyword: "Keyword principal", secondaryKeywords: "Keywords secundarias",
     intent: "Intención de búsqueda", audience: "Audiencia objetivo", angle: "Ángulo editorial",
     targetLength: "Extensión objetivo", metaTitle: "Meta title", metaDescription: "Meta description",
-    structure: "Estructura del artículo", faqQuestions: "Preguntas frecuentes",
+    structure: "Estructura del artículo", faqQuestions: "Preguntas frecuentes", generatedImages: "Imágenes generadas",
     seoOptimization: "Optimización SEO",
     metaOg: "Meta & Open Graph", seoChecklist: "Checklist SEO", seoImages: "Imágenes — Alt tags",
     featuredImageNote: "La imagen destacada (og_image_url) es gestionada por el image skill.",
@@ -163,7 +163,7 @@ Return ONLY valid JSON, no markdown:
 }`;
 }
 
-function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: string, brand: string, language: string): string {
+function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: string, brand: string, language: string, imageVariants: string[] = []): string {
   const L = footerZoneLabels(language);
   const uid = "fz" + Date.now().toString(36);
 
@@ -207,6 +207,7 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
     ${kwsCard}
     ${sectionsCard}
     ${faqsCard}
+    ${imageVariants.length ? `<div class="seo-fz-asset-card seo-fz-asset-card--full"><div class="seo-fz-asset-label">${L.generatedImages || "Imágenes generadas"}</div><div class="seo-fz-asset-imgs">${imageVariants.map(function(url,i){return '<div class="seo-fz-asset-img-row"><span class="seo-fz-asset-img-num">'+(i+1)+'</span><a href="'+esc(url)+'" class="seo-fz-asset-img-url" target="_blank" rel="noopener">'+esc(url)+'</a></div>';}).join("")}</div></div>` : ""}
   </div>
 </div>`;
 
@@ -422,6 +423,11 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 .seo-fz-kw-main{font-size:16px;font-weight:700;color:#1e3a5f}
 .seo-fz-asset-tags{display:flex;flex-wrap:wrap;gap:6px}
 .seo-fz-tag{background:#e0e7ff;color:#3730a3;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500}
+.seo-fz-asset-imgs{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.seo-fz-asset-img-row{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#fff;border:1px solid #e2e8f0;border-radius:8px}
+.seo-fz-asset-img-num{flex-shrink:0;width:22px;height:22px;background:#6366f1;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.seo-fz-asset-img-url{font-size:12px;color:#1d4ed8;word-break:break-all;text-decoration:none;font-family:monospace;line-height:1.4}
+.seo-fz-asset-img-url:hover{text-decoration:underline}
 .seo-fz-asset-ol,.seo-fz-asset-ul{margin:6px 0 0;padding:0 0 0 18px;font-size:13px;color:#334155;line-height:1.7}
 .seo-fz-cj-fallback{background:#f8fafc;border-radius:10px;padding:20px;font-size:14px;color:#475569}
 .seo-fz-cj2{display:flex;flex-direction:column;gap:20px}
@@ -636,7 +642,8 @@ serve(async (req) => {
 
     // Build initial footer zone (no AI data) and SAVE IMMEDIATELY
     const brandName = String(project?.nombremarca || "");
-    let footerZone = buildFooterZone({}, {}, contract, val, article, brandName, language);
+    const existingImgVariants: string[] = Array.isArray((item.custom_metadata?.seo_content_swarm as J)?.image_variants) ? (item.custom_metadata!.seo_content_swarm as J).image_variants as string[] : [];
+    let footerZone = buildFooterZone({}, {}, contract, val, article, brandName, language, existingImgVariants);
     article = assemble(contract, parts, language, footerZone);
 
     const initialStatus = val.passed ? "published" : "pending_review";
@@ -707,7 +714,7 @@ serve(async (req) => {
         const elPromise: Promise<J> = fetchJson(promptEditorialLogic(master, seo, contract, val, language));
 
         const [eeatResult, cjData, elData] = await Promise.all([eeatPromise, cjPromise, elPromise]);
-        const enrichedFooter = buildFooterZone(cjData, elData, contract, val, article, brandName, language);
+        const enrichedFooter = buildFooterZone(cjData, elData, contract, val, article, brandName, language, existingImgVariants);
         const enrichedArticle = assemble(contract, parts, language, enrichedFooter);
 
         await patch(env, "content_items", item.id, {
