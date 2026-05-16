@@ -10,7 +10,7 @@
 
 | Sesión | Área | Owner | Inicio | Tarea | Estado |
 |---|---|---|---|---|---|
-| S-008 | F. ILS + C. Writer | Claude-chat-enlazado-cj | 2026-05-16 | — | Análisis profundo de enlazado interno + Customer Journey: categoría padre en primeras 100 palabras y arquitectura CJ desde sitemap WP | en_curso |
+| _vacío_ | _ninguna activa_ | _—_ | _—_ | _—_ | _—_ |
 
 ---
 
@@ -25,6 +25,7 @@
 | S-005 | I. Meta | Claude vía MCP | 2026-05-16 15:30 | 2026-05-16 15:40 | ✅ Sistema de onboarding y coordinación creado (CLAUDE.md + AGENT_ONBOARDING + AREAS + este archivo) |
 | S-006 | G. Enrichment + C. Writer | Claude-chat-customer-journey | 2026-05-16 | 2026-05-16 | ✅ Spec D-005 completo: zona post-FAQ con 3 tabs, Edge Function, migración SQL, HTML/CSS/JS. Propuesta 05 en propuestas-ops-control-plane/. |
 | S-007 | D. Validator + C. Writer | Claude-chat-calidad-contenido | 2026-05-16 | 2026-05-16 | ✅ Auditoría completa con datos reales: contract gate 79% fallos (word count mal calibrado), quality gate heurístico inútil semánticamente, 91% artículos sin meta description, content_score siempre NULL. Writer sí genera contenido potente. 5 mejoras propuestas. Ver D-006 en README. |
+| S-008 | F. ILS + C. Writer | Claude-chat-enlazado-cj | 2026-05-16 | 2026-05-16 | ✅ Análisis profundo del sistema de enlazado. 4 gaps críticos identificados con datos reales. Arquitectura 4 fases propuesta (categoría padre + CJ slots + multi-anchor + sitemap WP). Spec en propuesta 06. D-007 registrado. Pendiente: P-1 a P-4 del usuario. |
 
 ---
 
