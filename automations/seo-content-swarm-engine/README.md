@@ -115,8 +115,8 @@ armor-corp, cassino-bet, doug-construction, educa-college-prep, floty, holisteek
 | **Recalibrar contract gate** | ✅ **Resuelto — D-009** Quality floor 1500-2800 implementado | **Hecho** |
 | **Agregar step meta description** | ✅ **Resuelto — D-009** Auto-generación post-EEAT implementada | **Hecho** |
 | **Quality Enforcer semántico** | ✅ **Resuelto — D-009** `seo-content-quality-enforcer` v1.0 deployado | **Hecho** |
-| RLS `content_feedback` | Añadir políticas SELECT/INSERT (bloqueado para usuarios autenticados) | Pendiente — ver D-008 |
-| RLS `content_comments` | Añadir políticas UPDATE/DELETE para resolver/editar | Pendiente — ver D-008 |
+| RLS `content_feedback` | ✅ INSERT policy aplicada — frontend puede enviar feedback | **Hecho** |
+| RLS `content_comments` | ✅ Ya tenía todas las policies (INSERT/SELECT/UPDATE/DELETE) | **Hecho** |
 
 ---
 
@@ -130,7 +130,7 @@ armor-corp, cassino-bet, doug-construction, educa-college-prep, floty, holisteek
 5. Llenar `latency_ms` y `tokens_*` en logs (observabilidad).
 6. ✅ **[D-009]** Recalibrar word count en contract gate: floor 1,500-2,800 palabras. Elimina el 79% de fallos.
 7. ✅ **[D-009]** Agregar step `meta_description_generator` en el orchestrator. Resuelve el 91% de artículos sin meta.
-8. Aplicar SQL de fix RLS para `content_feedback` y `content_comments` (ver D-008).
+8. ✅ **[D-008]** RLS `content_feedback` INSERT policy aplicada. `content_comments` ya tenía todas las policies. Bucle de feedback desbloqueado.
 
 ### Optimizaciones medianas (3-5 días)
 9. Drenar la cola de enrichment (895 pending).
@@ -141,8 +141,8 @@ armor-corp, cassino-bet, doug-construction, educa-college-prep, floty, holisteek
 
 ### Estratégicas (1-2 semanas)
 14. ✅ **[D-009]** Quality Enforcer semántico deployado: 5 checks (competidores, dato en apertura, marca en CTA, producto propio, FAQ). Monitorear tasa de bloqueo en producción.
-15. Activar swarm v3.1 en marca piloto (`armor-corp`).
-16. Activar bucle de feedback editorial real (`content_feedback` tiene 0 filas — requiere fix RLS D-008).
+15. Swarm v3.1 en `enabled = false` — legacy pipeline v4.4 corre para todas las marcas. Activar v3.1 cuando el usuario lo confirme.
+16. ✅ Bucle de feedback editorial desbloqueado — RLS `content_feedback` INSERT aplicada (D-008).
 17. Unificar `seo-content-orchestrator` (está duplicado en dos proyectos Supabase).
 18. Documentar n8n A explícitamente.
 19. Implementar spec ILS categoría padre + CJ (D-007) — pendiente confirmación P-1 a P-4 del usuario.
@@ -197,3 +197,4 @@ Detalle completo en el [informe de análisis](../../handovers/2026-05-16-analisi
 | 2026-05-16 | D-007 — Análisis profundo de enlazado interno + CJ. `content_categories.vertical_target_url` vacío bloquea capa A. ILS v2.5 funcional pero con 9.4% de uso (76/809 candidatos). Universo limitado a Supabase, ignora sitemap WP. Arquitectura 4 fases propuesta. Pendiente confirmación de URLs de categorías (P-1 a P-4). |
 | 2026-05-16 | D-008 — QA dry run Reviewer Section. content_comments funciona (24 filas reales). content_feedback bloqueado por RLS sin políticas (0 filas). 2 bloqueadores críticos + 3 mejoras. SQL de fix preparado. |
 | 2026-05-16 | D-009 — Quality floor 1500-2800 + meta description auto + Quality Enforcer. Orchestrator v4.4 (Supabase v43) + `seo-content-quality-enforcer` v1.0 deployados en Light_House. |
+| 2026-05-16 | D-008 (cierre) — RLS `content_feedback_insert_own` aplicada. `content_comments` ya tenía INSERT/SELECT/UPDATE/DELETE. Image skill ya usaba OpenRouter (v25+). Swarm v3.1 permanece en legacy. |
