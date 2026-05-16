@@ -10,7 +10,7 @@
 
 | Sesión | Área | Owner | Inicio | Tarea | Estado |
 |---|---|---|---|---|---|
-| _vacío_ | _ninguna activa_ | _—_ | _—_ | _—_ | _—_ |
+| S-006 | G. Enrichment + C. Writer (nuevo) | Claude-chat-customer-journey | 2026-05-16 | Diseño zona post-FAQ: Customer Journey, Assets y Lógica del contenido — spec + propuesta ops-control-plane | en_curso |
 
 ---
 
