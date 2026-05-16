@@ -7,7 +7,7 @@ type Project = { id:string; nombremarca?:string|null; idioma_objetivo?:string|nu
 type Section = { key:string; kind:"intro"|"h2"|"faq"|"cta"|"expansion"; heading:string; minWords:number; payload?:unknown };
 type Contract = { source:string; extensionRaw:string|null; extensionSource?:string|null; extensionComplianceRule?:string; min:number|null; max:number|null; h1:string|null; slug:string|null; metaTitle:string|null; metaDescription:string|null; keyword:string|null; secondary:string[]; intent:string|null; audience:string|null; angle:string|null; h2:string[]; h2Details:J[]; faq:string[]; cta:string|null; research:string|null; facts:string[]; sections:Section[] };
 type Val = { passed:boolean; wordCount:number; issues:string[]; missingH1:boolean; missingH2:string[]; missingFaq:string[]; missingCta:boolean; missingKeyword:boolean; missingFacts:string[]; extensionRaw:string|null; targetWordMin:number|null; targetWordMax:number|null };
-const VERSION = "4.10";
+const VERSION = "4.11";
 const CORS = { "Access-Control-Allow-Origin":"*", "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods":"POST, OPTIONS" };
 
 function faqHeading(language:string):string{
@@ -431,14 +431,14 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 .seo-fz-asset-ol,.seo-fz-asset-ul{margin:6px 0 0;padding:0 0 0 18px;font-size:13px;color:#334155;line-height:1.7}
 .seo-fz-cj-fallback{background:#f8fafc;border-radius:10px;padding:20px;font-size:14px;color:#475569}
 .seo-fz-cj2{display:flex;flex-direction:column;gap:20px}
-.seo-fz-cj2-infog{display:flex;align-items:center;overflow-x:auto;padding:24px 16px;background:linear-gradient(135deg,#f8fafc 0%,#f0f4ff 100%);border-radius:14px;border:1px solid #e2e8f0;gap:0;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
-.seo-fz-cj2-node{display:flex;flex-direction:column;align-items:center;gap:10px;flex:0 0 auto;min-width:90px;max-width:110px}
+.seo-fz-cj2-infog{display:flex;align-items:center;overflow-x:auto;padding:24px 16px;background:linear-gradient(135deg,#f8fafc 0%,#f0f4ff 100%);border-radius:14px;border:1px solid #e2e8f0;gap:0;-webkit-overflow-scrolling:touch;scrollbar-width:thin;width:100%;box-sizing:border-box}
+.seo-fz-cj2-node{display:flex;flex-direction:column;align-items:center;gap:10px;flex:1 1 0;min-width:80px}
 .seo-fz-cj2-circle{width:54px;height:54px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;transition:transform .2s,box-shadow .2s;cursor:default}
 .seo-fz-cj2-circle:hover{transform:scale(1.1)}
 .seo-fz-cj2-circle-icon{font-size:18px;line-height:1}
 .seo-fz-cj2-circle-num{font-size:9px;font-weight:700;opacity:.85;margin-top:1px}
 .seo-fz-cj2-node-label{font-size:11px;font-weight:600;color:#334155;text-align:center;line-height:1.3;max-width:90px}
-.seo-fz-cj2-conn{display:flex;align-items:center;flex:1 0 24px;min-width:24px;max-width:48px;padding:0 4px}
+.seo-fz-cj2-conn{display:flex;align-items:center;flex:0 0 36px;padding:0 4px}
 .seo-fz-cj2-conn-line{flex:1;height:2px;background:linear-gradient(90deg,#cbd5e1,#94a3b8)}
 .seo-fz-cj2-conn-arrow{font-size:16px;color:#94a3b8;line-height:1;margin-left:-4px}
 .seo-fz-cj2-cards{display:flex;flex-direction:column;gap:8px}
