@@ -7,7 +7,7 @@ type Project = { id:string; nombremarca?:string|null; idioma_objetivo?:string|nu
 type Section = { key:string; kind:"intro"|"h2"|"faq"|"cta"|"expansion"; heading:string; minWords:number; payload?:unknown };
 type Contract = { source:string; extensionRaw:string|null; extensionSource?:string|null; extensionComplianceRule?:string; min:number|null; max:number|null; h1:string|null; slug:string|null; metaTitle:string|null; metaDescription:string|null; keyword:string|null; secondary:string[]; intent:string|null; audience:string|null; angle:string|null; h2:string[]; h2Details:J[]; faq:string[]; cta:string|null; research:string|null; facts:string[]; sections:Section[] };
 type Val = { passed:boolean; wordCount:number; issues:string[]; missingH1:boolean; missingH2:string[]; missingFaq:string[]; missingCta:boolean; missingKeyword:boolean; missingFacts:string[]; extensionRaw:string|null; targetWordMin:number|null; targetWordMax:number|null };
-const VERSION = "4.8";
+const VERSION = "4.9";
 const CORS = { "Access-Control-Allow-Origin":"*", "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods":"POST, OPTIONS" };
 
 function faqHeading(language:string):string{
@@ -210,41 +210,76 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
   </div>
 </div>`;
 
-  // ── CUSTOMER JOURNEY TAB ──────────────────────────────────────
+  // ── CUSTOMER JOURNEY TAB (v4.9 — premium infographic + expandable cards) ──
   const stages: J[] = Array.isArray(cj.stages) ? cj.stages : [];
-  const stagesInnerHtml = stages.map(function(s, i) {
+
+  // Infographic: horizontal node map with circles + connectors
+  const PALETTE = ["#6366f1","#0ea5e9","#10b981","#f59e0b","#ef4444","#8b5cf6","#ec4899"];
+  const infogNodes = stages.map(function(s, i) {
+    const icon = esc(String(s.icon_label || "◆"));
+    const stageName = esc(String(s.name || "Stage " + (i+1)));
+    const color = PALETTE[i % PALETTE.length];
+    const conn = i < stages.length - 1
+      ? '<div class="seo-fz-cj2-conn" aria-hidden="true"><div class="seo-fz-cj2-conn-line"></div><div class="seo-fz-cj2-conn-arrow">›</div></div>'
+      : "";
+    return '<div class="seo-fz-cj2-node">' +
+      '<div class="seo-fz-cj2-circle" style="background:' + color + ';box-shadow:0 4px 14px ' + color + '44">' +
+        '<span class="seo-fz-cj2-circle-icon">' + icon + '</span>' +
+        '<span class="seo-fz-cj2-circle-num">' + String(s.number || i+1) + '</span>' +
+      '</div>' +
+      '<div class="seo-fz-cj2-node-label">' + stageName + '</div>' +
+    '</div>' + conn;
+  }).join("");
+  const infogHtml = stages.length
+    ? '<div class="seo-fz-cj2-infog" role="img" aria-label="Customer journey map">' + infogNodes + '</div>'
+    : "";
+
+  // Expandable cards: <details>/<summary> — no JS required
+  const cardsHtml = stages.map(function(s, i) {
     const icon = esc(String(s.icon_label || "◆"));
     const stageNum = String(s.number || i + 1);
     const stageName = esc(String(s.name || ""));
-    const userStateHtml = s.user_state ? '<div class="seo-fz-cj-field"><span class="seo-fz-cj-field-label">Estado del usuario</span><p>' + esc(String(s.user_state)) + "</p></div>" : "";
-    const userNeedHtml = '<div class="seo-fz-cj-field"><span class="seo-fz-cj-field-label">' + L.userNeed + "</span><p>" + esc(String(s.user_need || "")) + "</p></div>";
-    const contentResponseHtml = '<div class="seo-fz-cj-field"><span class="seo-fz-cj-field-label">' + L.contentResponse + "</span><p>" + esc(String(s.content_response || "")) + "</p></div>";
-    const refHtml = s.section_reference ? '<div class="seo-fz-cj-ref">→ ' + esc(String(s.section_reference)) + "</div>" : "";
-    const arrowHtml = i < stages.length - 1 ? '<div class="seo-fz-cj-arrow" aria-hidden="true">→</div>' : "";
-    return '<div class="seo-fz-cj-stage">' +
-      '<div class="seo-fz-cj-stage-header">' +
-      '<span class="seo-fz-cj-icon">' + icon + "</span>" +
-      '<span class="seo-fz-cj-stage-num">' + L.stage + " " + stageNum + "</span>" +
-      "</div>" +
-      '<div class="seo-fz-cj-stage-name">' + stageName + "</div>" +
-      userStateHtml + userNeedHtml + contentResponseHtml + refHtml +
-      "</div>" + arrowHtml;
+    const color = PALETTE[i % PALETTE.length];
+    const refBadge = s.section_reference
+      ? '<span class="seo-fz-cj2-ref-badge">→ ' + esc(String(s.section_reference)) + '</span>'
+      : "";
+    const fieldHtml = function(label: string, val: unknown) {
+      return val ? '<div class="seo-fz-cj2-field"><span class="seo-fz-cj2-field-label">' + label + '</span><p class="seo-fz-cj2-field-val">' + esc(String(val)) + '</p></div>' : "";
+    };
+    const bodyHtml =
+      fieldHtml(L.userNeed, s.user_need) +
+      fieldHtml("Estado del usuario", s.user_state) +
+      fieldHtml(L.contentResponse, s.content_response);
+    return '<details class="seo-fz-cj2-card">' +
+      '<summary class="seo-fz-cj2-sum" style="--cj-color:' + color + '">' +
+        '<span class="seo-fz-cj2-sum-left">' +
+          '<span class="seo-fz-cj2-badge" style="background:' + color + '22;color:' + color + '">' + icon + ' ' + stageNum + '</span>' +
+          '<span class="seo-fz-cj2-sum-name">' + stageName + '</span>' +
+          refBadge +
+        '</span>' +
+        '<span class="seo-fz-cj2-chev" aria-hidden="true">›</span>' +
+      '</summary>' +
+      '<div class="seo-fz-cj2-body">' + bodyHtml + '</div>' +
+    '</details>';
   }).join("");
+
   const fallbackHtml = '<div class="seo-fz-cj-fallback"><p><em>Customer journey generado con datos del brief.</em></p><p><strong>Keyword:</strong> ' + esc(c.keyword || "—") + "</p><p><strong>" + L.intent + ":</strong> " + esc(String(c.intent || "—")) + "</p><p><strong>" + L.audience + ":</strong> " + esc(String(c.audience || "—")) + "</p></div>";
   const stagesHtml = stages.length
-    ? '<div class="seo-fz-cj-stages">' + stagesInnerHtml + "</div>"
+    ? '<div class="seo-fz-cj2-cards">' + cardsHtml + '</div>'
     : fallbackHtml;
 
-  const cjInsight = function(title: string, content: string) {
-    return '<div class="seo-fz-cj-insight"><h4 class="seo-fz-insight-title">' + title + "</h4><p>" + content + "</p></div>";
+  // Insight meta grid
+  const metaItem = function(label: string, val: unknown) {
+    return val ? '<div class="seo-fz-cj2-meta-block"><div class="seo-fz-cj2-meta-label">' + label + '</div><p class="seo-fz-cj2-meta-val">' + esc(String(val)) + '</p></div>' : "";
   };
-  const cjRationale = [
-    cj.flow_rationale ? cjInsight(L.flowRationale, esc(String(cj.flow_rationale))) : "",
-    cj.search_intent_alignment ? cjInsight(L.searchIntentAlignment, esc(String(cj.search_intent_alignment))) : "",
-    cj.audience_insight ? cjInsight(L.audienceInsight, esc(String(cj.audience_insight))) : "",
-  ].filter(Boolean).join("\n");
-  const cjInsightsBlock = cjRationale ? '<div class="seo-fz-cj-insights">' + cjRationale + "</div>" : "";
-  const cjHtml = '<div class="seo-fz-cj">' + stagesHtml + cjInsightsBlock + "</div>";
+  const metaGrid = [
+    metaItem(L.flowRationale, cj.flow_rationale),
+    metaItem(L.searchIntentAlignment, cj.search_intent_alignment),
+    metaItem(L.audienceInsight, cj.audience_insight),
+  ].filter(Boolean).join("");
+  const cjMetaBlock = metaGrid ? '<div class="seo-fz-cj2-meta">' + metaGrid + '</div>' : "";
+
+  const cjHtml = '<div class="seo-fz-cj2">' + infogHtml + stagesHtml + cjMetaBlock + '</div>';
 
   // ── EDITORIAL LOGIC TAB ───────────────────────────────────────
   const decisions: string[] = Array.isArray(el.key_editorial_decisions) ? el.key_editorial_decisions.map(String) : [];
@@ -388,22 +423,40 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 .seo-fz-asset-tags{display:flex;flex-wrap:wrap;gap:6px}
 .seo-fz-tag{background:#e0e7ff;color:#3730a3;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500}
 .seo-fz-asset-ol,.seo-fz-asset-ul{margin:6px 0 0;padding:0 0 0 18px;font-size:13px;color:#334155;line-height:1.7}
-.seo-fz-cj{}.seo-fz-cj-stages{display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding:8px 0 24px;-webkit-overflow-scrolling:touch}
-.seo-fz-cj-stage{flex:0 0 220px;background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:18px 16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.seo-fz-cj-arrow{flex:0 0 auto;align-self:center;font-size:20px;color:#94a3b8;padding:0 8px;font-weight:300}
-.seo-fz-cj-stage-header{display:flex;align-items:center;gap:8px;margin:0 0 8px}
-.seo-fz-cj-icon{font-size:20px;line-height:1}
-.seo-fz-cj-stage-num{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8}
-.seo-fz-cj-stage-name{font-size:15px;font-weight:700;color:#1e3a5f;margin:0 0 12px;line-height:1.3}
-.seo-fz-cj-field{margin:0 0 10px}
-.seo-fz-cj-field-label{display:block;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#94a3b8;margin:0 0 3px}
-.seo-fz-cj-field p{margin:0;font-size:12px;color:#475569;line-height:1.5}
-.seo-fz-cj-ref{margin-top:10px;font-size:11px;color:#64748b;font-style:italic;border-top:1px solid #f1f5f9;padding-top:8px}
-.seo-fz-cj-insights{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin:24px 0 0}
-.seo-fz-cj-insight{background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:16px}
-.seo-fz-insight-title{margin:0 0 8px;font-size:13px;font-weight:700;color:#0369a1}
-.seo-fz-cj-insight p{margin:0;font-size:13px;color:#0c4a6e;line-height:1.6}
 .seo-fz-cj-fallback{background:#f8fafc;border-radius:10px;padding:20px;font-size:14px;color:#475569}
+.seo-fz-cj2{display:flex;flex-direction:column;gap:20px}
+.seo-fz-cj2-infog{display:flex;align-items:center;overflow-x:auto;padding:24px 16px;background:linear-gradient(135deg,#f8fafc 0%,#f0f4ff 100%);border-radius:14px;border:1px solid #e2e8f0;gap:0;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.seo-fz-cj2-node{display:flex;flex-direction:column;align-items:center;gap:10px;flex:0 0 auto;min-width:90px;max-width:110px}
+.seo-fz-cj2-circle{width:54px;height:54px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;transition:transform .2s,box-shadow .2s;cursor:default}
+.seo-fz-cj2-circle:hover{transform:scale(1.1)}
+.seo-fz-cj2-circle-icon{font-size:18px;line-height:1}
+.seo-fz-cj2-circle-num{font-size:9px;font-weight:700;opacity:.85;margin-top:1px}
+.seo-fz-cj2-node-label{font-size:11px;font-weight:600;color:#334155;text-align:center;line-height:1.3;max-width:90px}
+.seo-fz-cj2-conn{display:flex;align-items:center;flex:1 0 24px;min-width:24px;max-width:48px;padding:0 4px}
+.seo-fz-cj2-conn-line{flex:1;height:2px;background:linear-gradient(90deg,#cbd5e1,#94a3b8)}
+.seo-fz-cj2-conn-arrow{font-size:16px;color:#94a3b8;line-height:1;margin-left:-4px}
+.seo-fz-cj2-cards{display:flex;flex-direction:column;gap:8px}
+.seo-fz-cj2-card{background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden;transition:box-shadow .2s,border-color .2s}
+.seo-fz-cj2-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.08);border-color:#c7d2fe}
+.seo-fz-cj2-card[open]{box-shadow:0 6px 24px rgba(99,102,241,.12);border-color:#a5b4fc}
+.seo-fz-cj2-sum{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;list-style:none;user-select:none;gap:12px}
+.seo-fz-cj2-sum::-webkit-details-marker{display:none}
+.seo-fz-cj2-sum:hover{background:#fafbff}
+.seo-fz-cj2-sum-left{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.seo-fz-cj2-badge{padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;flex-shrink:0}
+.seo-fz-cj2-sum-name{font-size:14px;font-weight:700;color:#1e293b;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seo-fz-cj2-ref-badge{font-size:11px;color:#6366f1;background:#eef2ff;padding:3px 8px;border-radius:6px;white-space:nowrap;flex-shrink:0}
+.seo-fz-cj2-chev{font-size:18px;color:#94a3b8;transition:transform .25s;flex-shrink:0;line-height:1}
+.seo-fz-cj2-card[open] .seo-fz-cj2-chev{transform:rotate(90deg);color:#6366f1}
+.seo-fz-cj2-body{padding:0 18px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;border-top:1px solid #f1f5f9}
+.seo-fz-cj2-field{background:#f8fafc;border-radius:8px;padding:12px 14px}
+.seo-fz-cj2-field-label{display:block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;margin:0 0 5px}
+.seo-fz-cj2-field-val{margin:0;font-size:13px;color:#334155;line-height:1.6}
+.seo-fz-cj2-meta{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;padding:16px;background:linear-gradient(135deg,#f0f9ff 0%,#f0f4ff 100%);border-radius:12px;border:1px solid #bae6fd}
+.seo-fz-cj2-meta-block{padding:2px 0}
+.seo-fz-cj2-meta-label{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#0369a1;margin:0 0 4px}
+.seo-fz-cj2-meta-val{margin:0;font-size:12px;color:#0c4a6e;line-height:1.6}
+@media(max-width:640px){.seo-fz-cj2-body{grid-template-columns:1fr}.seo-fz-cj2-meta{grid-template-columns:1fr}}
 .seo-fz-el{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
 .seo-fz-el-block{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px}
 .seo-fz-el-block--highlight{background:#fefce8;border-color:#fde68a}
@@ -414,8 +467,6 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 @media(max-width:640px){
   .seo-fz-tabs{flex-direction:column}
   .seo-fz-asset-card--wide{grid-column:span 1}
-  .seo-fz-cj-stages{flex-direction:column;overflow-x:visible}
-  .seo-fz-cj-arrow{transform:rotate(90deg);align-self:flex-start;padding:4px 0}
   .seo-fz-el{grid-template-columns:1fr}
 }
 .seo-fz-seo{display:flex;flex-direction:column;gap:24px}
