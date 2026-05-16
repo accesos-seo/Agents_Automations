@@ -7,7 +7,7 @@ type Project = { id:string; nombremarca?:string|null; idioma_objetivo?:string|nu
 type Section = { key:string; kind:"intro"|"h2"|"faq"|"cta"|"expansion"; heading:string; minWords:number; payload?:unknown };
 type Contract = { source:string; extensionRaw:string|null; extensionSource?:string|null; extensionComplianceRule?:string; min:number|null; max:number|null; h1:string|null; slug:string|null; metaTitle:string|null; metaDescription:string|null; keyword:string|null; secondary:string[]; intent:string|null; audience:string|null; angle:string|null; h2:string[]; h2Details:J[]; faq:string[]; cta:string|null; research:string|null; facts:string[]; sections:Section[] };
 type Val = { passed:boolean; wordCount:number; issues:string[]; missingH1:boolean; missingH2:string[]; missingFaq:string[]; missingCta:boolean; missingKeyword:boolean; missingFacts:string[]; extensionRaw:string|null; targetWordMin:number|null; targetWordMax:number|null };
-const VERSION = "4.7";
+const VERSION = "4.8";
 const CORS = { "Access-Control-Allow-Origin":"*", "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods":"POST, OPTIONS" };
 
 function faqHeading(language:string):string{
@@ -454,6 +454,8 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 .seo-fz-seo-img-val--empty{color:#94a3b8;font-style:italic}
 .seo-fz-seo-img-val--suggested{color:#1d4ed8;font-weight:500}
 @media(max-width:640px){.seo-fz-seo-meta-grid{grid-template-columns:1fr}.seo-fz-seo-og-row{flex-wrap:wrap}.seo-fz-seo-og-row code{flex:none}}
+#${uid}-r-assets:checked~.seo-fz-tabs label[for="${uid}-r-assets"],#${uid}-r-cj:checked~.seo-fz-tabs label[for="${uid}-r-cj"],#${uid}-r-el:checked~.seo-fz-tabs label[for="${uid}-r-el"],#${uid}-r-seo:checked~.seo-fz-tabs label[for="${uid}-r-seo"]{background:#fff;color:#1e293b;box-shadow:0 1px 4px rgba(0,0,0,.1),0 0 0 1px rgba(0,0,0,.04)}
+#${uid}-r-assets:checked~.seo-fz-panels #${uid}-assets,#${uid}-r-cj:checked~.seo-fz-panels #${uid}-cj,#${uid}-r-el:checked~.seo-fz-panels #${uid}-el,#${uid}-r-seo:checked~.seo-fz-panels #${uid}-seo{display:block}
 </style>`;
 
   // ── SCRIPT ─────────────────────────────────────────────────────
@@ -477,27 +479,30 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 <\/script>`;
 
   return `${styles}
-<div class="seo-fz-sep" aria-hidden="true"><div class="seo-fz-sep-line"></div></div>
+<div style="border-top:1px solid #e2e8f0;margin:40px 0 0" aria-hidden="true"></div>
 <section id="${uid}-wrapper" class="seo-fz-wrapper" aria-label="${L.supplementaryContent}">
   <div class="seo-fz-header">
     <div class="seo-fz-header-line"></div>
     <span class="seo-fz-header-label">${L.supplementaryContent}</span>
     <div class="seo-fz-header-line"></div>
   </div>
-  <nav class="seo-fz-tabs" role="tablist">
-    <button class="seo-fz-tab seo-fz-tab--active" role="tab" data-fz-target="${uid}-assets" aria-selected="true">${L.assets}</button>
-    <button class="seo-fz-tab" role="tab" data-fz-target="${uid}-cj" aria-selected="false">${L.customerJourney}</button>
-    <button class="seo-fz-tab" role="tab" data-fz-target="${uid}-el" aria-selected="false">${L.editorialLogic}</button>
-    <button class="seo-fz-tab" role="tab" data-fz-target="${uid}-seo" aria-selected="false">${L.seoOptimization}</button>
+  <input type="radio" id="${uid}-r-assets" name="${uid}-tabs" hidden checked>
+  <input type="radio" id="${uid}-r-cj" name="${uid}-tabs" hidden>
+  <input type="radio" id="${uid}-r-el" name="${uid}-tabs" hidden>
+  <input type="radio" id="${uid}-r-seo" name="${uid}-tabs" hidden>
+  <nav class="seo-fz-tabs">
+    <label for="${uid}-r-assets" class="seo-fz-tab">${L.assets}</label>
+    <label for="${uid}-r-cj" class="seo-fz-tab">${L.customerJourney}</label>
+    <label for="${uid}-r-el" class="seo-fz-tab">${L.editorialLogic}</label>
+    <label for="${uid}-r-seo" class="seo-fz-tab">${L.seoOptimization}</label>
   </nav>
   <div class="seo-fz-panels">
-    <div id="${uid}-assets" class="seo-fz-panel seo-fz-panel--active" role="tabpanel">${assetsHtml}</div>
+    <div id="${uid}-assets" class="seo-fz-panel" role="tabpanel">${assetsHtml}</div>
     <div id="${uid}-cj" class="seo-fz-panel" role="tabpanel">${cjHtml}</div>
     <div id="${uid}-el" class="seo-fz-panel" role="tabpanel">${elHtml}</div>
     <div id="${uid}-seo" class="seo-fz-panel" role="tabpanel">${seoHtml}</div>
   </div>
-</section>
-${script}`;
+</section>`;
 }
 
 serve(async (req) => {
