@@ -10,7 +10,7 @@
 
 | Sesión | Área | Owner | Inicio | Tarea | Estado |
 |---|---|---|---|---|---|
-| _vacío_ | _ninguna activa_ | _—_ | _—_ | _—_ | _—_ |
+| S-008 | F. ILS + C. Writer | Claude-chat-enlazado-cj | 2026-05-16 | — | Análisis profundo de enlazado interno + Customer Journey: categoría padre en primeras 100 palabras y arquitectura CJ desde sitemap WP | en_curso |
 
 ---
 
