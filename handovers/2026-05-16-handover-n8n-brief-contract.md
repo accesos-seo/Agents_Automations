@@ -3,7 +3,7 @@
 **Fecha:** 2026-05-16
 **Destinatario:** Chat de Claude Code con acceso a n8n del cliente (`estancias-atlas-n8n.heh8a3.easypanel.host`)
 **Autor:** Claude principal (sesión S-005)
-**Sesión asignada:** S-006 — Área B (Briefs / n8n A) según [`AREAS.md`](../automations/seo-content-swarm-engine/AREAS.md)
+**Sesión asignada:** S-013 — Área B (Briefs / n8n A) según [`AREAS.md`](../automations/seo-content-swarm-engine/AREAS.md)
 **Política canónica que aplica:** [`referencias/politica-competidores-prohibidos.md`](../referencias/politica-competidores-prohibidos.md) (decisión D-002)
 
 ---
@@ -28,7 +28,7 @@ Lee en este orden:
 **Después de leer, registra tu sesión en `WORK_IN_PROGRESS.md`** así (commit + push antes de tocar n8n):
 
 ```markdown
-| S-006 | B. Briefs / n8n A | <tu identificador> | <fecha+hora UTC> | Refuerzo n8n A: filtro competidores + brand_contract | en_curso |
+| S-013 | B. Briefs / n8n A | <tu identificador> | <fecha+hora UTC> | Refuerzo n8n A: filtro competidores + brand_contract | en_curso |
 ```
 
 ---
@@ -496,7 +496,7 @@ DELETE FROM public.content_items WHERE id = '<test_item_id>';
 Cuando termines, reporta en chat con este formato (literal):
 
 ```
-✅ S-006 — Refuerzo n8n A completado
+✅ S-013 — Refuerzo n8n A completado
 
 Cambios aplicados en workflow n8n (webhook /supabase-content-trigger):
   1. Nodo `sanitize-competitors` (Function): filtro de los 16 competidores prohibidos.
@@ -520,7 +520,7 @@ Versión del workflow: <vN>
 Si algo falló:
 
 ```
-❌ S-006 — Refuerzo n8n A incompleto
+❌ S-013 — Refuerzo n8n A incompleto
 
 Bloqueado en: <paso>
 Razón: <descripción>
@@ -551,9 +551,9 @@ Y actualiza `WORK_IN_PROGRESS.md` moviendo tu fila a "Sesiones cerradas" con el 
 
 ## 9. Próxima fase tras tu cierre
 
-Cuando tu sesión esté cerrada, los handovers siguientes son:
+Cuando tu sesión esté cerrada, los handovers paralelos en marcha son:
 
-- **S-007** — Aplicar los 4 patches en `ops-control-plane` (lo hace el usuario directamente en GitHub UI según `aprobacion-github/`).
-- **S-008** — Implementar `forbidden_competitors_check` bloqueante en el `contract-validator` (área D).
+- **S-009** — Recalibrar contract gate + meta_description automática + Quality Enforcer (área D, en curso por `Claude-chat-calidad-contenido`).
+- **S-014** — Aplicar los 5 patches copy/paste en `ops-control-plane` (lo hace el usuario directamente en GitHub UI según `propuestas-ops-control-plane/README.md`).
 
 Pero esos son trabajos para otros chats — no los tomes en esta sesión.

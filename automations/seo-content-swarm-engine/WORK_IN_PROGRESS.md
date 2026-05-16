@@ -10,8 +10,9 @@
 
 | Sesión | Área | Owner | Inicio | Tarea | Estado |
 |---|---|---|---|---|---|
-| **S-006** | B. Briefs / n8n A | _por asignar — chat Claude con acceso n8n_ | _por iniciar_ | Refuerzo n8n A: sanitizador de competidores + inyección de brand_contract. Handover en [`handovers/2026-05-16-handover-n8n-brief-contract.md`](../../handovers/2026-05-16-handover-n8n-brief-contract.md). | listo_para_tomar |
-| **S-007** | H. Política | Usuario (aprobación directa en GitHub UI) | _por iniciar_ | Aplicar los 4 patches en `ops-control-plane`. Instrucciones copy-paste en [`propuestas-ops-control-plane/README.md`](propuestas-ops-control-plane/README.md). | listo_para_tomar |
+| **S-009** | D. Validator (+ orchestrator gate logic) | Claude-chat-calidad-contenido | 2026-05-16 | Implementar D-008: recalibrar contract gate (piso 1500-2800), generar meta_description automáticamente, mejorar repair loop, construir Quality Enforcer semántico. NO toca prompts del writer. | en_curso |
+| **S-013** | B. Briefs / n8n A | _por asignar — chat Claude con acceso n8n_ | _por iniciar_ | Refuerzo n8n A: sanitizador de competidores + inyección de brand_contract. Handover en [`handovers/2026-05-16-handover-n8n-brief-contract.md`](../../handovers/2026-05-16-handover-n8n-brief-contract.md). | listo_para_tomar |
+| **S-014** | H. Política | Usuario (aprobación directa en GitHub UI) | _por iniciar_ | Aplicar los 5 patches copy/paste en `ops-control-plane`. Instrucciones en [`propuestas-ops-control-plane/README.md`](propuestas-ops-control-plane/README.md). | listo_para_tomar |
 
 ---
 
@@ -24,7 +25,13 @@
 | S-003 | C. Writer (D-003) | Claude vía MCP | 2026-05-16 15:00 | 2026-05-16 15:15 | ✅ 7 artículos pt-BR reescritos manualmente aplicando brand voice |
 | S-004 | A. Audio (D-004) | Claude vía MCP | 2026-05-16 15:15 | 2026-05-16 15:20 | ✅ Deploy v14 literal-script, 7 audios regenerados |
 | S-005 | I. Meta | Claude vía MCP | 2026-05-16 15:30 | 2026-05-16 15:40 | ✅ Sistema de onboarding y coordinación creado (CLAUDE.md + AGENT_ONBOARDING + AREAS + este archivo) |
-| S-005b | I. Meta + H. Política | Claude vía MCP | 2026-05-16 15:45 | 2026-05-16 16:00 | ✅ Handover detallado para n8n (S-006) + paquete de aprobación GitHub UI para usuario (S-007). PR #2 abierto. |
+| S-006 | G. Enrichment + C. Writer | Claude-chat-customer-journey | 2026-05-16 | 2026-05-16 | ✅ Spec D-005 completo: zona post-FAQ con 3 tabs, Edge Function, migración SQL, HTML/CSS/JS. Propuesta 05 en propuestas-ops-control-plane/. |
+| S-007 | D. Validator + C. Writer | Claude-chat-calidad-contenido | 2026-05-16 | 2026-05-16 | ✅ Auditoría completa con datos reales: contract gate 79% fallos (word count mal calibrado), quality gate heurístico inútil semánticamente, 91% artículos sin meta description, content_score siempre NULL. Writer sí genera contenido potente. 5 mejoras propuestas. Ver D-006 en README. |
+| S-008 | F. ILS + C. Writer | Claude-chat-enlazado-cj | 2026-05-16 | 2026-05-16 | ✅ Análisis profundo del sistema de enlazado. 4 gaps críticos identificados con datos reales. Arquitectura 4 fases propuesta (categoría padre + CJ slots + multi-anchor + sitemap WP). Spec en propuesta 06. D-007 registrado. Pendiente: P-1 a P-4 del usuario. |
+| S-010 | J. Reviewer (nueva área) | Claude-chat-qa-reviewer | 2026-05-16 | 2026-05-16 | ✅ Reviewer Section VALIDADO E2E EN PRODUCCIÓN. 3 políticas RLS aplicadas por el usuario. Prueba real: insert content_feedback → trigger n8n → POST 200 → workflow clasificó "urgent_flag" en 6s. Informe en `handovers/2026-05-16-qa-reviewer-section.md`. 5 mejoras UX pendientes (no bloqueantes). |
+| S-011 | F. ILS + C. Writer | Claude-chat-enlazado-cj | 2026-05-16 | 2026-05-16 | ✅ Arquitectura definitiva v2 post-clarificación: taxonomía categoría/cluster/hermana confirmada, 4 slots editoriales, diseño modular anti-colapso (Python + 2 Edge Functions nuevas + injector mejorado). Solicitud técnica formal para técnico. Spec v3 completo en propuesta 06-v3. |
+| S-012 | H. Política + F. ILS | Claude-chat-enlazado-cj | 2026-05-16 | 2026-05-16 | ✅ Brand voice Vozy AI (Colombia, es-CO) completo — D-009. Países corregidos: Armor Corp/Leasy/Educa → Perú (es-PE). 15 competidores prohibidos añadidos al YAML. AGENT_ONBOARDING actualizado. Solicitud técnica sitemaps corregida. Pendiente del usuario esta semana: URLs sitemaps, categorías WP, clusters por marca. |
+| S-005b | I. Meta + H. Política | Claude-chat-principal | 2026-05-16 15:45 | 2026-05-16 16:30 | ✅ Handover detallado para n8n (S-013) + paquete de aprobación GitHub UI integrado con propuestas 01-07 (S-014). Renumeración tras detectar S-006 a S-012 ya tomados por chats paralelos. PR #2 actualizado. |
 
 ---
 
@@ -40,15 +47,16 @@ Añade una fila a "Sesiones activas" con este formato, en el commit que inicia t
 
 **Descripción breve:** 1 línea. Ejemplo: "Migrar audio a OpenAI TTS-1-HD y validar literalidad con 3 artículos".
 
+**ID siguiente:** S-015 (las anteriores ya están tomadas — verifica esta lista antes de elegir número).
+
 ---
 
 ## Cómo cerrar tu sesión
 
 1. Mueve tu fila de "Sesiones activas" a "Sesiones cerradas (historial)".
 2. Reemplaza el estado por `✅ <resultado en 1 línea>` o `❌ <motivo del cierre>` o `⏸ <transferido a / pausado por>`.
-3. Asigna un ID de sesión incremental (S-006, S-007, …) si quedó sin asignar.
-4. Si descubriste pendientes nuevos, agrégalos a la sección correspondiente de [`AREAS.md`](AREAS.md).
-5. Si tomaste una decisión que afecta a otros, regístrala en la sección "7.5. Decisiones tomadas" del [`README.md`](README.md) de la automatización.
+3. Si descubriste pendientes nuevos, agrégalos a la sección correspondiente de [`AREAS.md`](AREAS.md).
+4. Si tomaste una decisión que afecta a otros, regístrala en la sección "7.5. Decisiones tomadas" del [`README.md`](README.md) de la automatización.
 
 ---
 
@@ -58,3 +66,4 @@ Añade una fila a "Sesiones activas" con este formato, en el commit que inicia t
 2. **Áreas en 🔴 (alto choque):** ver matriz en `AREAS.md`. Si quieres tomar Writer (C) y alguien está en Briefs (B), espera o coordina.
 3. **Política (H) bloquea todo:** si hay sesión activa en H, otras áreas deben coordinar antes de cambios que dependan de política.
 4. **Si el área que necesitas está tomada y no hay forma de esperar:** crea una sesión nueva con estado `⏸ esperando S-NNN` y pide al usuario que mueva trabajo.
+5. **Antes de elegir número de sesión:** lee TODA la lista de "Sesiones activas" y "Sesiones cerradas". El siguiente número libre es secuencial. Si dos chats lo eligen a la vez, el segundo en commitear lo descubrirá al hacer pull y debe renumerar.
