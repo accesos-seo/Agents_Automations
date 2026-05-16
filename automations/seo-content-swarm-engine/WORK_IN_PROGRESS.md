@@ -26,7 +26,7 @@
 | S-006 | G. Enrichment + C. Writer | Claude-chat-customer-journey | 2026-05-16 | 2026-05-16 | ✅ Spec D-005 completo: zona post-FAQ con 3 tabs, Edge Function, migración SQL, HTML/CSS/JS. Propuesta 05 en propuestas-ops-control-plane/. |
 | S-007 | D. Validator + C. Writer | Claude-chat-calidad-contenido | 2026-05-16 | 2026-05-16 | ✅ Auditoría completa con datos reales: contract gate 79% fallos (word count mal calibrado), quality gate heurístico inútil semánticamente, 91% artículos sin meta description, content_score siempre NULL. Writer sí genera contenido potente. 5 mejoras propuestas. Ver D-006 en README. |
 | S-008 | F. ILS + C. Writer | Claude-chat-enlazado-cj | 2026-05-16 | 2026-05-16 | ✅ Análisis profundo del sistema de enlazado. 4 gaps críticos identificados con datos reales. Arquitectura 4 fases propuesta (categoría padre + CJ slots + multi-anchor + sitemap WP). Spec en propuesta 06. D-007 registrado. Pendiente: P-1 a P-4 del usuario. |
-| S-010 | J. Reviewer (nueva área) | Claude-chat-qa-reviewer | 2026-05-16 | 2026-05-16 | ✅ QA dry run completo. content_comments funciona (24 comentarios reales). content_feedback bloqueado por RLS sin políticas (0 filas). 2 bloqueadores críticos RLS + 3 mejoras identificadas. SQL de fix listo. Ver D-007 en README (nota: D-007 ya tomado por ILS; este QA = D-008 en README). |
+| S-010 | J. Reviewer (nueva área) | Claude-chat-qa-reviewer | 2026-05-16 | 2026-05-16 | ✅ QA dry run completo. content_comments funciona (24 comentarios reales). content_feedback bloqueado por RLS sin políticas (0 filas). 2 bloqueadores críticos RLS + 3 mejoras identificadas. SQL de fix listo. Ver QA Reviewer en README. |
 
 ---
 
