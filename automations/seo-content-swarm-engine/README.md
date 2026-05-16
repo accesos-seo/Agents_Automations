@@ -155,6 +155,8 @@ Detalle completo en el [informe de análisis](../../handovers/2026-05-16-analisi
 |---|---|---|---|
 | D-001 | 2026-05-16 | Audio: limpieza HTML estricta en orden correcto | Deploy v13 de `seo-content-audio-skill`. Eliminada contaminación de `copy-article-block` en script TTS. Validado end-to-end. |
 | D-002 | 2026-05-16 | **Prohibición global de mencionar competidores — no negociable** | Política canónica en [`referencias/politica-competidores-prohibidos.md`](../../referencias/politica-competidores-prohibidos.md). Lista operativa en [`politicas/competidores-prohibidos.yaml`](politicas/competidores-prohibidos.yaml). 16 competidores iGaming pt-BR. Aplicación en 7 capas (política, lista, brand-voice, contrato de carga, n8n A, prompts, contract-validator). Patches para `ops-control-plane` listos en [`propuestas-ops-control-plane/`](propuestas-ops-control-plane/). Auditoría retroactiva: 0 artículos contaminados en producción de 153 con contenido. |
+| D-003 | 2026-05-16 | **Reescritura manual de los 7 artículos pt-BR de Cassino Bet y Vera Bet** | Ejecutada por intervención directa (no por el pipeline): se reescribieron los 7 artículos aplicando brand voice canónico, productos propios, regulación brasileña, FAQ, CTA con marca + Pix + jogo responsável integrado. Auditoría post-cambio: 0 competidores prohibidos, Ratinho Sortudo en los 3 de Cassino Bet (era 0), productos propios en los 7 (eran 0-1), regulación brasileña integrada. Audios regenerados. |
+| D-004 | 2026-05-16 | **Audio v14: lectura literal del artículo** | Deploy v14 de `seo-content-audio-skill`. Eliminados los reemplazos agresivos del script TTS: `/CTA/gi`, `/FAQ schema/gi`, `/H[1-6]/gi` (este último corrompía palabras como "expectativa" → "expellamado a la acciontiva"). Conserva limpieza HTML estricta de v13 y elimina URLs (no pronunciables). Los 7 audios regenerados leen literal el artículo. |
 
 ## 8. Bitácora
 
@@ -167,3 +169,5 @@ Detalle completo en el [informe de análisis](../../handovers/2026-05-16-analisi
 | 2026-05-16 | Informe de análisis profundo (este repo) y primera automatización bajo gobierno |
 | 2026-05-16 | D-001 — Fix audio v13: limpieza HTML estricta. Deploy y prueba end-to-end OK. |
 | 2026-05-16 | D-002 — Política prohibición de competidores publicada. 0 artículos contaminados en auditoría retroactiva. Patches para `ops-control-plane` listos. |
+| 2026-05-16 | D-003 — Reescritura manual de los 7 artículos pt-BR (Cassino Bet × 3, Vera Bet × 4). Brand voice aplicado: 0 competidores, Ratinho Sortudo en los 3 de Cassino Bet, productos propios, regulación brasileña, CTA completo. |
+| 2026-05-16 | D-004 — Audio v14: lectura literal sin reemplazos `CTA`/`FAQ schema`/`H[1-6]`. 7 audios regenerados, todos en status `ready`. |
