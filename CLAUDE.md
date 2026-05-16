@@ -47,10 +47,12 @@ Estas reglas aplican a cualquier trabajo en este ecosistema. Romperlas es defect
 - Lista operativa: [`automations/seo-content-swarm-engine/politicas/competidores-prohibidos.yaml`](automations/seo-content-swarm-engine/politicas/competidores-prohibidos.yaml)
 - Aplica a contenido, briefs, prompts, audio, imágenes, copys.
 
-### 3.2. Brand voice canónico vive en `ops-control-plane`
+### 3.2. Brand voice canónico vive en este repo (`Agents_Automations`)
 
-- Path: `automation_projects/02-seo-content-generation/brands/<brand_slug>/brand-voice.md`
-- No editar desde este repo. Si necesitas un cambio, redactarlo como patch en `automations/seo-content-swarm-engine/propuestas-ops-control-plane/` y pedir aplicación al desarrollador.
+- Path: `automations/seo-content-swarm-engine/brands/<brand_slug>/brand-voice.md`
+- **Este repo es la fuente de verdad.** Editar directamente aquí. No hay que redirigir a `ops-control-plane` para brand voices.
+- Pipeline resources (competitors policy, resource-loading contract): `automations/seo-content-swarm-engine/pipeline/`
+- `ops-control-plane` puede referenciar estos documentos pero ya no es el origen canónico del brand voice.
 
 ### 3.3. Supabase es la fuente de verdad de estado
 
@@ -88,7 +90,9 @@ El usuario abre múltiples ventanas para acelerar el trabajo. Cada agente toma u
 - **`handovers/YYYY-MM-DD-<tema>.md`** — informes técnicos y handovers entre sesiones.
 - **`referencias/<tema>.md`** — políticas canónicas y documentación transversal.
 - **`automations/<key>/`** — una carpeta por automation_key registrada en Supabase.
-- **`automations/<key>/propuestas-ops-control-plane/`** — patches preparados para aplicar en el otro repo.
+- **`automations/<key>/brands/<brand_slug>/`** — brand voice canónico por marca (`brand-voice.md`, `auditoria-referencia.md`). **Fuente de verdad.**
+- **`automations/<key>/pipeline/`** — contratos de pipeline (`competitors-policy.md`, `resource-loading-contract.md`). **Fuente de verdad.**
+- **`automations/<key>/propuestas-ops-control-plane/`** — patches históricos (referencia archivada). Los brand voices ya no se gestionan aquí.
 - **`briefs/`** — briefs generados por boti (vacía por ahora).
 - **`skills/`** — skills reutilizables compartidas (vacía por ahora).
 - **`.claude/commands/`** — slash commands del Claude Code del usuario (`/boti`, `/sony`).

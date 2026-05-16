@@ -105,22 +105,14 @@ Y en tabla `content_feedback`:
 
 ### 2.4. Implementación en GitHub
 
-**Repo de implementación:** `accesos-seo/ops-control-plane`
+**Repo de implementación técnica (Edge Functions, SQL):** `accesos-seo/ops-control-plane`
 **Path:** `automation_projects/02-seo-content-generation/`
 
-Estructura del path:
-- `agents/` — definiciones markdown de cada agente
-- `brands/<brand_slug>/` — recursos por marca: `brand-voice.md`, `auditoria-referencia.md`
-- `skills/<skill_key>/` — skills atómicos
-- `pipeline/` — `resource-loading-contract.md`, `competitors-policy.md` (pendiente de aplicar)
-- `edge-functions/` — código fuente de las Edge Functions
-- `database/` — migraciones SQL
-- `seo-content-swarm/` — recursos del swarm v3.1
-- `informes/` — informes históricos
+Contiene: `agents/`, `skills/`, `edge-functions/`, `database/`, `seo-content-swarm/`, `informes/`.
 
-⚠ **No tengo acceso de escritura a `ops-control-plane` desde este repo.** Los cambios para ese repo se redactan en `automations/seo-content-swarm-engine/propuestas-ops-control-plane/` y se aplican manualmente.
+⚠ **Brand voices y pipeline docs YA NO viven en `ops-control-plane`.** Fueron migrados a este repo (ver sección 2.5). `ops-control-plane` puede referenciarlos pero la edición ocurre aquí.
 
-### 2.5. En este repo (gobierno)
+### 2.5. En este repo (fuente de verdad)
 
 ```
 Agents_Automations/
@@ -130,21 +122,37 @@ Agents_Automations/
 │   └── politica-competidores-prohibidos.md           ← Política canónica
 ├── handovers/
 │   ├── 2026-05-16-inicio-proyecto-agentes.md
-│   ├── 2026-05-16-rls-light-house.md                 ← RLS pendiente (otro tema)
-│   └── 2026-05-16-analisis-seo-content-swarm.md      ← Auditoría completa del swarm
+│   ├── 2026-05-16-rls-light-house.md
+│   └── 2026-05-16-analisis-seo-content-swarm.md
 └── automations/seo-content-swarm-engine/
-    ├── README.md                                      ← Plano de control de la automatización
+    ├── README.md                                      ← Plano de control
     ├── AGENT_ONBOARDING.md                            ← Este documento
-    ├── AREAS.md                                       ← Áreas de trabajo separables
+    ├── AREAS.md                                       ← Áreas de trabajo
     ├── WORK_IN_PROGRESS.md                            ← Registro de sesiones activas
     ├── politicas/
     │   └── competidores-prohibidos.yaml              ← Lista operativa machine-readable
-    └── propuestas-ops-control-plane/
-        ├── README.md                                  ← Cómo aplicar los patches
-        ├── 01-cassino-bet-brand-voice-PATCH.md
-        ├── 02-vera-bet-brand-voice-PATCH.md
-        ├── 03-pipeline-competitors-policy-NEW.md
-        └── 04-pipeline-resource-loading-contract-PATCH.md
+    ├── brands/                                        ← FUENTE DE VERDAD — brand voices
+    │   ├── cassino-bet/brand-voice.md                ← ✅ Completo (pt-BR)
+    │   ├── vera-bet/brand-voice.md                   ← ✅ Base completa (pt-BR, pendientes del cliente)
+    │   ├── vozy-ai/brand-voice.md                    ← ✅ Completo (es-CO)
+    │   ├── floty/brand-voice.md                      ← ✅ Sustancial (es-MX)
+    │   ├── armor-corp/brand-voice.md                 ← ✅ Sustancial (es-PE)
+    │   ├── holisteek/brand-voice.md                  ← ⚠ Esqueleto (pendiente cliente)
+    │   ├── leasy/brand-voice.md                      ← ⚠ Esqueleto (pendiente cliente)
+    │   ├── educa-college-prep/brand-voice.md         ← ⚠ Base + gaps (pendiente cliente)
+    │   └── doug-construction/brand-voice.md          ← ⚠ Esqueleto en-US (pendiente cliente)
+    ├── pipeline/                                      ← FUENTE DE VERDAD — contratos de pipeline
+    │   ├── competitors-policy.md                     ← ✅ Política de competidores (cargada por brand-context-loader)
+    │   └── resource-loading-contract.md              ← ✅ Contrato de carga de recursos
+    └── propuestas-ops-control-plane/                 ← Histórico de patches (archivado)
+        ├── README.md
+        ├── 01-cassino-bet-brand-voice-PATCH.md       ← Superseded por brands/cassino-bet/brand-voice.md
+        ├── 02-vera-bet-brand-voice-PATCH.md          ← Superseded por brands/vera-bet/brand-voice.md
+        ├── 03-pipeline-competitors-policy-NEW.md     ← Superseded por pipeline/competitors-policy.md
+        ├── 04-pipeline-resource-loading-contract-PATCH.md ← Superseded por pipeline/resource-loading-contract.md
+        ├── 05-customer-journey-enrichment-SPEC.md
+        ├── 06-internal-linking-customer-journey-v3-SPEC.md
+        └── 07-vozy-ai-brand-voice-NEW.md             ← Superseded por brands/vozy-ai/brand-voice.md
 ```
 
 ---

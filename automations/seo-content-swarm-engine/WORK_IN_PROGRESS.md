@@ -32,6 +32,7 @@
 | S-011 | F. ILS + C. Writer | Claude-chat-enlazado-cj | 2026-05-16 | 2026-05-16 | ✅ Arquitectura definitiva v2 post-clarificación: taxonomía categoría/cluster/hermana confirmada, 4 slots editoriales, diseño modular anti-colapso (Python + 2 Edge Functions nuevas + injector mejorado). Solicitud técnica formal para técnico. Spec v3 completo en propuesta 06-v3. |
 | S-012 | H. Política + F. ILS | Claude-chat-enlazado-cj | 2026-05-16 | 2026-05-16 | ✅ Brand voice Vozy AI (Colombia, es-CO) completo — D-009. Países corregidos: Armor Corp/Leasy/Educa → Perú (es-PE). 15 competidores prohibidos añadidos al YAML. AGENT_ONBOARDING actualizado. Solicitud técnica sitemaps corregida. Pendiente del usuario esta semana: URLs sitemaps, categorías WP, clusters por marca. |
 | S-005b | I. Meta + H. Política | Claude-chat-principal | 2026-05-16 15:45 | 2026-05-16 16:30 | ✅ Handover detallado para n8n (S-013) + paquete de aprobación GitHub UI integrado con propuestas 01-07 (S-014). Renumeración tras detectar S-006 a S-012 ya tomados por chats paralelos. PR #2 actualizado. |
+| S-015 | H. Política + I. Meta | Claude-chat-enlazado-cj | 2026-05-16 | 2026-05-16 | ✅ Migración completa de brand voices a Agents_Automations como fuente de verdad única. 9 brand voices creados (brands/). 2 archivos de pipeline creados (pipeline/). CLAUDE.md y AGENT_ONBOARDING actualizados para apuntar a nueva ubicación. D-010 registrado. |
 
 ---
 
