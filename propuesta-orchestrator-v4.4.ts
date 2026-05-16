@@ -188,7 +188,7 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
     </div>
     <div class="seo-fz-asset-card">
       <div class="seo-fz-asset-label">${L.intent}</div>
-      <div class="seo-fz-asset-value">${esc(String(c.intent || "—"))}</div>
+      <div class="seo-fz-asset-value seo-fz-asset-value--accent">${esc(String(c.intent || "—"))}</div>
     </div>
     <div class="seo-fz-asset-card">
       <div class="seo-fz-asset-label">${L.targetLength}</div>
@@ -200,7 +200,7 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
     </div>
     <div class="seo-fz-asset-card seo-fz-asset-card--wide">
       <div class="seo-fz-asset-label">${L.angle}</div>
-      <div class="seo-fz-asset-value">${esc(String(c.angle || "—"))}</div>
+      <div class="seo-fz-asset-value seo-fz-asset-value--accent">${esc(String(c.angle || "—"))}</div>
     </div>
     ${metaTitleCard}
     ${metaDescCard}
@@ -368,74 +368,98 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 
   // ── STYLES ─────────────────────────────────────────────────────
   const styles = `<style data-fz="1">
-.seo-fz-sep{margin:48px 0 0;padding:0}
-.seo-fz-sep-line{height:2px;background:linear-gradient(90deg,transparent 0%,#cbd5e1 20%,#94a3b8 50%,#cbd5e1 80%,transparent 100%)}
-.seo-fz-wrapper{margin:32px 0 0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;color:#1e293b}
-.seo-fz-header{display:flex;align-items:center;gap:12px;margin:0 0 20px}
+/* ── Separator / Transition ── */
+.seo-fz-sep{margin:72px 0 0;padding:0}
+.seo-fz-sep-inner{display:flex;align-items:center;gap:20px}
+.seo-fz-sep-line{flex:1;height:1px;background:linear-gradient(90deg,transparent,#e2e8f0)}
+.seo-fz-sep-line--rev{background:linear-gradient(90deg,#e2e8f0,transparent)}
+.seo-fz-sep-ornament{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.seo-fz-sep-dot{width:4px;height:4px;border-radius:50%;background:#cbd5e1}
+.seo-fz-sep-dot--lg{width:6px;height:6px;background:#94a3b8}
+/* ── Wrapper ── */
+.seo-fz-wrapper{margin:36px 0 0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;color:#1e293b}
+/* ── Header label ── */
+.seo-fz-header{display:flex;align-items:center;gap:16px;margin:0 0 28px}
 .seo-fz-header-line{flex:1;height:1px;background:#e2e8f0}
-.seo-fz-header-label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;white-space:nowrap;padding:0 4px}
-.seo-fz-tabs{display:flex;gap:4px;padding:4px;background:#f1f5f9;border-radius:10px;margin:0 0 24px}
-.seo-fz-tab{flex:1;padding:10px 16px;border:none;background:transparent;border-radius:8px;cursor:pointer;font-weight:500;font-size:14px;color:#64748b;transition:all .2s;white-space:nowrap}
-.seo-fz-tab:hover{color:#334155;background:rgba(255,255,255,.6)}
-.seo-fz-tab--active{background:#fff;color:#1e293b;box-shadow:0 1px 4px rgba(0,0,0,.1),0 0 0 1px rgba(0,0,0,.04)}
+.seo-fz-header-label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#94a3b8;white-space:nowrap}
+/* ── Tab nav ── */
+.seo-fz-tabs{display:flex;gap:0;padding:4px;background:#f1f5f9;border-radius:12px;margin:0 0 28px}
+.seo-fz-tab{flex:1;padding:10px 20px;border:none;background:transparent;border-radius:9px;cursor:pointer;font-weight:500;font-size:14px;color:#64748b;transition:all .18s ease;white-space:nowrap;text-align:center}
+.seo-fz-tab:hover{color:#334155}
+.seo-fz-tab--active{background:#fff;color:#111827;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.08),0 0 0 1px rgba(0,0,0,.04)}
 .seo-fz-panel{display:none}.seo-fz-panel--active{display:block}
-.seo-fz-assets{}.seo-fz-asset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
-.seo-fz-asset-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px}
-.seo-fz-asset-card--wide{grid-column:span 2}.seo-fz-asset-card--full{grid-column:1/-1}
-.seo-fz-asset-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;margin:0 0 6px}
-.seo-fz-asset-value{font-size:14px;color:#1e293b;line-height:1.5}
-.seo-fz-kw-main{font-size:16px;font-weight:700;color:#1e3a5f}
-.seo-fz-asset-tags{display:flex;flex-wrap:wrap;gap:6px}
-.seo-fz-tag{background:#e0e7ff;color:#3730a3;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500}
-.seo-fz-asset-ol,.seo-fz-asset-ul{margin:6px 0 0;padding:0 0 0 18px;font-size:13px;color:#334155;line-height:1.7}
+/* ── Assets grid ── */
+.seo-fz-assets{}
+.seo-fz-asset-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.seo-fz-asset-card{background:#fff;border:1px solid #e8edf2;border-radius:10px;padding:16px 18px}
+.seo-fz-asset-card--wide{grid-column:span 2}
+.seo-fz-asset-card--full{grid-column:1/-1}
+.seo-fz-asset-label{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:#94a3b8;margin:0 0 8px}
+.seo-fz-asset-value{font-size:14px;color:#1e293b;line-height:1.55}
+.seo-fz-asset-value--accent{color:#2563eb}
+.seo-fz-kw-main{font-size:18px;font-weight:700;color:#0f172a;line-height:1.2}
+.seo-fz-asset-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.seo-fz-tag{background:#eff6ff;color:#1d4ed8;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid #bfdbfe}
+.seo-fz-asset-ol,.seo-fz-asset-ul{margin:6px 0 0;padding:0 0 0 18px;font-size:13px;color:#334155;line-height:1.75}
+/* ── Customer Journey ── */
 .seo-fz-cj{}.seo-fz-cj-stages{display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding:8px 0 24px;-webkit-overflow-scrolling:touch}
-.seo-fz-cj-stage{flex:0 0 220px;background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:18px 16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.seo-fz-cj-stage{flex:0 0 220px;background:#fff;border:1px solid #e8edf2;border-radius:12px;padding:18px 16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
 .seo-fz-cj-arrow{flex:0 0 auto;align-self:center;font-size:20px;color:#94a3b8;padding:0 8px;font-weight:300}
 .seo-fz-cj-stage-header{display:flex;align-items:center;gap:8px;margin:0 0 8px}
 .seo-fz-cj-icon{font-size:20px;line-height:1}
-.seo-fz-cj-stage-num{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8}
-.seo-fz-cj-stage-name{font-size:15px;font-weight:700;color:#1e3a5f;margin:0 0 12px;line-height:1.3}
+.seo-fz-cj-stage-num{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:#94a3b8}
+.seo-fz-cj-stage-name{font-size:15px;font-weight:700;color:#0f172a;margin:0 0 12px;line-height:1.3}
 .seo-fz-cj-field{margin:0 0 10px}
-.seo-fz-cj-field-label{display:block;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#94a3b8;margin:0 0 3px}
-.seo-fz-cj-field p{margin:0;font-size:12px;color:#475569;line-height:1.5}
+.seo-fz-cj-field-label{display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin:0 0 3px}
+.seo-fz-cj-field p{margin:0;font-size:12px;color:#475569;line-height:1.55}
 .seo-fz-cj-ref{margin-top:10px;font-size:11px;color:#64748b;font-style:italic;border-top:1px solid #f1f5f9;padding-top:8px}
-.seo-fz-cj-insights{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin:24px 0 0}
+.seo-fz-cj-insights{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin:24px 0 0}
 .seo-fz-cj-insight{background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:16px}
-.seo-fz-insight-title{margin:0 0 8px;font-size:13px;font-weight:700;color:#0369a1}
+.seo-fz-insight-title{margin:0 0 8px;font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#0369a1}
 .seo-fz-cj-insight p{margin:0;font-size:13px;color:#0c4a6e;line-height:1.6}
-.seo-fz-cj-fallback{background:#f8fafc;border-radius:10px;padding:20px;font-size:14px;color:#475569}
-.seo-fz-el{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
-.seo-fz-el-block{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px}
+.seo-fz-cj-fallback{background:#fff;border:1px solid #e8edf2;border-radius:10px;padding:20px;font-size:14px;color:#475569}
+/* ── Editorial Logic ── */
+.seo-fz-el{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.seo-fz-el-block{background:#fff;border:1px solid #e8edf2;border-radius:10px;padding:18px}
 .seo-fz-el-block--highlight{background:#fefce8;border-color:#fde68a}
-.seo-fz-el-title{margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#64748b}
+.seo-fz-el-title{margin:0 0 8px;font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#94a3b8}
 .seo-fz-el-block p{margin:0 0 8px;font-size:13px;color:#334155;line-height:1.6}
 .seo-fz-el-block p:last-child{margin-bottom:0}
-.seo-fz-el-list{margin:0;padding:0 0 0 16px;font-size:13px;color:#334155;line-height:1.7}
+.seo-fz-el-list{margin:0;padding:0 0 0 16px;font-size:13px;color:#334155;line-height:1.75}
+/* ── Responsive ── */
+@media(max-width:900px){
+  .seo-fz-asset-grid{grid-template-columns:repeat(2,1fr)}
+  .seo-fz-asset-card--wide{grid-column:span 2}
+  .seo-fz-asset-card--full{grid-column:1/-1}
+}
 @media(max-width:640px){
-  .seo-fz-tabs{flex-direction:column}
-  .seo-fz-asset-card--wide{grid-column:span 1}
+  .seo-fz-tabs{flex-wrap:wrap;gap:4px}
+  .seo-fz-tab{flex:none;width:calc(50% - 2px)}
+  .seo-fz-asset-grid{grid-template-columns:1fr 1fr}
+  .seo-fz-asset-card--wide{grid-column:span 2}
   .seo-fz-cj-stages{flex-direction:column;overflow-x:visible}
   .seo-fz-cj-arrow{transform:rotate(90deg);align-self:flex-start;padding:4px 0}
   .seo-fz-el{grid-template-columns:1fr}
 }
-.seo-fz-seo{display:flex;flex-direction:column;gap:24px}
-.seo-fz-seo-section{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px}
-.seo-fz-seo-section-title{margin:0 0 16px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#64748b}
-.seo-fz-seo-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.seo-fz-seo-meta-field{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px}
+/* ── SEO Optimization ── */
+.seo-fz-seo{display:flex;flex-direction:column;gap:20px}
+.seo-fz-seo-section{background:#fff;border:1px solid #e8edf2;border-radius:10px;padding:20px}
+.seo-fz-seo-section-title{margin:0 0 16px;font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#94a3b8}
+.seo-fz-seo-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.seo-fz-seo-meta-field{background:#f8fafc;border:1px solid #e8edf2;border-radius:8px;padding:12px 14px}
 .seo-fz-seo-meta-field--full{grid-column:1/-1}
 .seo-fz-seo-meta-header{display:flex;align-items:center;justify-content:space-between;margin:0 0 6px}
-.seo-fz-seo-meta-label{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#94a3b8}
+.seo-fz-seo-meta-label{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:#94a3b8}
 .seo-fz-seo-meta-value{font-size:13px;color:#1e293b;line-height:1.5}
 .seo-fz-seo-meta-value--slug{font-family:monospace;font-size:12px;color:#1d4ed8}
 .seo-fz-seo-badge{padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
 .seo-fz-seo-badge--ok{background:#dcfce7;color:#16a34a}
 .seo-fz-seo-badge--warn{background:#fef9c3;color:#92400e}
 .seo-fz-seo-badge--err{background:#fee2e2;color:#dc2626}
-.seo-fz-seo-og{background:#f0f4ff;border:1px solid #c7d2fe;border-radius:8px;padding:14px}
-.seo-fz-seo-og-title{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#6366f1;margin:0 0 10px}
+.seo-fz-seo-og{background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:14px}
+.seo-fz-seo-og-title{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#7c3aed;margin:0 0 10px}
 .seo-fz-seo-og-row{display:flex;gap:10px;align-items:baseline;margin:0 0 6px;font-size:12px}
-.seo-fz-seo-og-row code{flex:0 0 120px;color:#6366f1;font-size:11px}
+.seo-fz-seo-og-row code{flex:0 0 120px;color:#7c3aed;font-size:11px}
 .seo-fz-seo-og-row span{color:#334155;line-height:1.4}
 .seo-fz-seo-og-note{color:#94a3b8;font-style:italic}
 .seo-fz-seo-checklist{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
@@ -445,11 +469,11 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 .seo-fz-seo-check--err{background:#fff1f2;color:#be123c}
 .seo-fz-seo-img-note{margin:0 0 16px;font-size:12px;color:#94a3b8;font-style:italic}
 .seo-fz-seo-no-imgs{font-size:13px;color:#94a3b8;font-style:italic;margin:0}
-.seo-fz-seo-img-row{border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;margin:0 0 10px;background:#fff}
+.seo-fz-seo-img-row{border:1px solid #e8edf2;border-radius:8px;padding:12px 14px;margin:0 0 10px;background:#fff}
 .seo-fz-seo-img-src{margin:0 0 10px;overflow:hidden}
 .seo-fz-seo-img-src code{font-size:11px;color:#64748b;word-break:break-all}
 .seo-fz-seo-img-fields{display:grid;grid-template-columns:100px 1fr;gap:4px 10px;align-items:baseline;font-size:12px}
-.seo-fz-seo-img-label{font-weight:600;color:#94a3b8;text-transform:uppercase;font-size:10px;letter-spacing:.04em}
+.seo-fz-seo-img-label{font-weight:600;color:#94a3b8;text-transform:uppercase;font-size:10px;letter-spacing:.07em}
 .seo-fz-seo-img-val{color:#334155;line-height:1.4}
 .seo-fz-seo-img-val--empty{color:#94a3b8;font-style:italic}
 .seo-fz-seo-img-val--suggested{color:#1d4ed8;font-weight:500}
@@ -477,7 +501,17 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 <\/script>`;
 
   return `${styles}
-<div class="seo-fz-sep" aria-hidden="true"><div class="seo-fz-sep-line"></div></div>
+<div class="seo-fz-sep" aria-hidden="true">
+  <div class="seo-fz-sep-inner">
+    <div class="seo-fz-sep-line"></div>
+    <div class="seo-fz-sep-ornament">
+      <span class="seo-fz-sep-dot"></span>
+      <span class="seo-fz-sep-dot seo-fz-sep-dot--lg"></span>
+      <span class="seo-fz-sep-dot"></span>
+    </div>
+    <div class="seo-fz-sep-line seo-fz-sep-line--rev"></div>
+  </div>
+</div>
 <section id="${uid}-wrapper" class="seo-fz-wrapper" aria-label="${L.supplementaryContent}">
   <div class="seo-fz-header">
     <div class="seo-fz-header-line"></div>
