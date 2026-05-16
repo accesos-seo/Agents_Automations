@@ -19,9 +19,21 @@
 | **Owner producto** | _por definir_ |
 | **Owner técnico** | _por definir_ |
 
-**Qué hace:** genera artículos SEO completos en pt-BR / es-MX / en-US a partir de un brief en `content_items`. Cada artículo pasa por: investigación SEO (n8n) → orquestador → contrato → contexto de marca → SEO expert → writer → contract gate → humanizer → EEAT validator → persistencia. Paralelamente: imagen destacada, audio "listen this article", ILS (enlazado interno), enrichment.
+**Qué hace:** genera artículos SEO completos en pt-BR / es-PE / es-CO / es-MX / en-US a partir de un brief en `content_items`. Cada artículo pasa por: investigación SEO (n8n) → orquestador → contrato → contexto de marca → SEO expert → writer → contract gate → humanizer → EEAT validator → persistencia. Paralelamente: imagen destacada, audio "listen this article", ILS (enlazado interno), enrichment.
 
-**Marcas vivas (9):** armor-corp, cassino-bet, doug-construction, educa-college-prep, floty, holisteek, leasy, vera-bet, vozy-ai. De estas, 2 están bajo trabajo activo (cassino-bet, vera-bet); las demás están a la espera de definiciones (ver áreas).
+**Marcas vivas (9) — países y idiomas corregidos:**
+
+| Marca | País | Idioma | Estado |
+|---|---|---|---|
+| cassino-bet | Brasil | pt-BR | ✅ Activa |
+| vera-bet | Brasil | pt-BR | ✅ Activa |
+| floty | México | es-MX | Esperando definiciones |
+| holisteek | México | es-MX | Esperando definiciones |
+| armor-corp | Perú | es-PE | Esperando definiciones |
+| educa-college-prep | Perú | es-PE | Esperando definiciones |
+| leasy | Perú | es-PE | Esperando definiciones |
+| doug-construction | EE.UU. | en-US | Esperando definiciones |
+| vozy-ai | Colombia | es-CO | ⚠️ Brand-voice redactado (propuesta 07) — pendiente aplicar en `ops-control-plane` |
 
 ---
 
@@ -214,7 +226,7 @@ Detalle completo en [`README.md`](README.md) sección 7.5.
 2. **Brand voice canónico vive en `ops-control-plane`** (no en este repo).
 3. **`article_content` debe ir limpio.** Sin `copy-article-block`, sin scripts JS, sin metadatos del CMS (`ESTRATEGIA DE CONTENIDO`, etc.). Si encuentras basura, repórtala antes de avanzar.
 4. **`publication_auto = false`**. NUNCA cambies este flag sin autorización escrita del owner producto. Publicación pasa por revisión humana.
-5. **Marca `vozy-ai` está bloqueada** (placeholder en brand-voice + auditoria-referencia). No procesar artículos suyos hasta que se completen los archivos en `ops-control-plane`.
+5. **Marca `vozy-ai` — brand-voice redactado, pendiente aplicar.** La propuesta 07 (`propuestas-ops-control-plane/07-vozy-ai-brand-voice-NEW.md`) contiene el brand-voice completo listo para aplicar en `ops-control-plane`. Una vez aplicado, eliminar el gate de bloqueo del orquestador para esta marca. El `auditoria-referencia.md` se completa con el primer lote de artículos revisados.
 
 ---
 

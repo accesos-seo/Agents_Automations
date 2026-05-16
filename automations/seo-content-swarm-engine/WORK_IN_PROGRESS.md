@@ -28,6 +28,7 @@
 | S-008 | F. ILS + C. Writer | Claude-chat-enlazado-cj | 2026-05-16 | 2026-05-16 | ✅ Análisis profundo del sistema de enlazado. 4 gaps críticos identificados con datos reales. Arquitectura 4 fases propuesta (categoría padre + CJ slots + multi-anchor + sitemap WP). Spec en propuesta 06. D-007 registrado. Pendiente: P-1 a P-4 del usuario. |
 | S-010 | J. Reviewer (nueva área) | Claude-chat-qa-reviewer | 2026-05-16 | 2026-05-16 | ✅ Reviewer Section VALIDADO E2E EN PRODUCCIÓN. 3 políticas RLS aplicadas por el usuario. Prueba real: insert content_feedback → trigger n8n → POST 200 → workflow clasificó "urgent_flag" en 6s. Informe en `handovers/2026-05-16-qa-reviewer-section.md`. 5 mejoras UX pendientes (no bloqueantes). |
 | S-011 | F. ILS + C. Writer | Claude-chat-enlazado-cj | 2026-05-16 | 2026-05-16 | ✅ Arquitectura definitiva v2 post-clarificación: taxonomía categoría/cluster/hermana confirmada, 4 slots editoriales, diseño modular anti-colapso (Python + 2 Edge Functions nuevas + injector mejorado). Solicitud técnica formal para técnico. Spec v3 completo en propuesta 06-v3. |
+| S-012 | H. Política + F. ILS | Claude-chat-enlazado-cj | 2026-05-16 | 2026-05-16 | ✅ Brand voice Vozy AI (Colombia, es-CO) completo — D-009. Países corregidos: Armor Corp/Leasy/Educa → Perú (es-PE). 15 competidores prohibidos añadidos al YAML. AGENT_ONBOARDING actualizado. Solicitud técnica sitemaps corregida. Pendiente del usuario esta semana: URLs sitemaps, categorías WP, clusters por marca. |
 
 ---
 

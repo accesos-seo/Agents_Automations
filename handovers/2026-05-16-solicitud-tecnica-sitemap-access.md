@@ -68,17 +68,17 @@ Cluster: "cotizador"          →  https://floty.mx/cotizar/             [conver
 
 ## Marcas activas que necesitan este setup
 
-| Marca | Dominio principal | Idioma | Prioridad |
-|---|---|---|---|
-| **Cassino Bet** | cassino.bet.br | pt-BR | 🔴 Alta (más artículos activos) |
-| **Vera Bet** | _(confirmar URL)_ | pt-BR | 🔴 Alta |
-| **Floty** | floty.mx | es-MX | 🟡 Media |
-| **Armor Corp** | blindajes360.com | es-MX | 🟡 Media |
-| **Holisteek** | holisteek.com | es-MX | 🟡 Media |
-| **Educa College Prep** | _(confirmar URL)_ | en-US | 🟡 Media |
-| **Leasy** | _(confirmar URL)_ | es-MX | 🟡 Media |
-| **Doug Construction** | _(confirmar URL)_ | en-US | 🟢 Baja |
-| **Vozy AI** | vozy.ai/es | es-MX | 🟢 Baja (bloqueada hasta completar brand-voice) |
+| Marca | Dominio principal | País | Idioma | Prioridad |
+|---|---|---|---|---|
+| **Cassino Bet** | cassino.bet.br | Brasil | pt-BR | 🔴 Alta (más artículos activos) |
+| **Vera Bet** | _(confirmar URL)_ | Brasil | pt-BR | 🔴 Alta |
+| **Floty** | floty.mx | México | es-MX | 🟡 Media |
+| **Armor Corp** | blindajes360.com | Perú | es-PE | 🟡 Media |
+| **Holisteek** | holisteek.com | México | es-MX | 🟡 Media |
+| **Educa College Prep** | _(confirmar URL)_ | Perú | es-PE | 🟡 Media |
+| **Leasy** | _(confirmar URL)_ | Perú | es-PE | 🟡 Media |
+| **Doug Construction** | _(confirmar URL)_ | EE.UU. | en-US | 🟢 Baja |
+| **Vozy AI** | vozy.ai/es | Colombia | es-CO | 🟡 Media (brand-voice aprobado — pendiente aplicar en ops-control-plane) |
 
 ---
 

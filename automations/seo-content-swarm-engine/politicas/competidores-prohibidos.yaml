@@ -103,8 +103,42 @@ brands:
     pending: true
     note: "Industria por confirmar; lista de competidores pendiente."
   vozy-ai:
-    pending: true
-    note: "Industria por confirmar; lista de competidores pendiente."
+    pending: false
+    country: CO
+    language: es-CO
+    industry: "IA Conversacional B2B — LATAM"
+    note: "Brand-voice redactado en propuesta 07. Lista de competidores definida. Ver Regla #0 en brand-voice."
+    additional_competitors:
+      - canonical: Kore.ai
+        aliases: ["Kore.ai", "Kore AI", "Kore"]
+      - canonical: Yellow.ai
+        aliases: ["Yellow.ai", "Yellow AI", "Yellow Messenger"]
+      - canonical: IBM Watson Assistant
+        aliases: ["IBM Watson", "Watson Assistant", "IBM Watson Assistant"]
+      - canonical: Google Contact Center AI
+        aliases: ["Google CCAI", "Contact Center AI", "Google Contact Center AI", "CCAI"]
+      - canonical: Amazon Connect
+        aliases: ["Amazon Connect", "AWS Connect"]
+      - canonical: Microsoft Nuance
+        aliases: ["Nuance", "Microsoft Nuance", "Nuance Communications"]
+      - canonical: Avaya
+        aliases: ["Avaya", "Avaya OneCloud"]
+      - canonical: Genesys
+        aliases: ["Genesys", "Genesys Cloud", "Genesys Digital"]
+      - canonical: Talkdesk
+        aliases: ["Talkdesk"]
+      - canonical: Twilio Flex
+        aliases: ["Twilio", "Twilio Flex"]
+      - canonical: LivePerson
+        aliases: ["LivePerson", "LiveEngage"]
+      - canonical: NICE inContact
+        aliases: ["NICE", "inContact", "NICE inContact", "NICE CXone"]
+      - canonical: Salesforce Einstein
+        aliases: ["Salesforce Einstein", "Einstein Bots", "Agentforce"]
+      - canonical: Zendesk AI
+        aliases: ["Zendesk AI", "Zendesk Suite"]
+      - canonical: Botpress
+        aliases: ["Botpress"]
 
 # ---------------------------------------------------------------------------
 # Excepciones autorizadas

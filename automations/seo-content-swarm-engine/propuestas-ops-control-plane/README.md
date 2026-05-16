@@ -12,10 +12,13 @@ Esta carpeta contiene los **textos exactos** que deben aplicarse al repo `acceso
 | `02-vera-bet-brand-voice-PATCH.md` | **Añadir sección al final** | `automation_projects/02-seo-content-generation/brands/vera-bet/brand-voice.md` |
 | `03-pipeline-competitors-policy-NEW.md` | **Crear archivo nuevo** | `automation_projects/02-seo-content-generation/pipeline/competitors-policy.md` |
 | `04-pipeline-resource-loading-contract-PATCH.md` | **Añadir sección** | `automation_projects/02-seo-content-generation/pipeline/resource-loading-contract.md` |
+| `05-article-strategic-zone-SPEC.md` | **Spec de implementación** | Nueva Edge Function + migración SQL |
+| `06-internal-linking-customer-journey-v3-SPEC.md` | **Spec de implementación** | ILS v3 — 4 módulos Customer Journey |
+| `07-vozy-ai-brand-voice-NEW.md` | **Crear archivo nuevo** | `automation_projects/02-seo-content-generation/brands/vozy-ai/brand-voice.md` |
 
 ## Orden de aplicación
 
-Aplicar en orden 03 → 04 → 01 → 02. Razón: el `competitors-policy.md` (paso 03) es referenciado por los `brand-voice.md` (pasos 01 y 02) y por el `resource-loading-contract.md` (paso 04).
+Aplicar en orden 03 → 04 → 01 → 02 → 07. Razón: el `competitors-policy.md` (paso 03) es referenciado por los brand-voice y el resource-loading-contract. El brand-voice de vozy-ai (paso 07) desbloquea la marca en producción.
 
 ## Tras aplicar
 
