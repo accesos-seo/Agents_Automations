@@ -7,7 +7,7 @@ type Project = { id:string; nombremarca?:string|null; idioma_objetivo?:string|nu
 type Section = { key:string; kind:"intro"|"h2"|"faq"|"cta"|"expansion"; heading:string; minWords:number; payload?:unknown };
 type Contract = { source:string; extensionRaw:string|null; extensionSource?:string|null; extensionComplianceRule?:string; min:number|null; max:number|null; h1:string|null; slug:string|null; metaTitle:string|null; metaDescription:string|null; keyword:string|null; secondary:string[]; intent:string|null; audience:string|null; angle:string|null; h2:string[]; h2Details:J[]; faq:string[]; cta:string|null; research:string|null; facts:string[]; sections:Section[] };
 type Val = { passed:boolean; wordCount:number; issues:string[]; missingH1:boolean; missingH2:string[]; missingFaq:string[]; missingCta:boolean; missingKeyword:boolean; missingFacts:string[]; extensionRaw:string|null; targetWordMin:number|null; targetWordMax:number|null };
-const VERSION = "4.5";
+const VERSION = "4.6";
 const CORS = { "Access-Control-Allow-Origin":"*", "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods":"POST, OPTIONS" };
 
 function faqHeading(language:string):string{
@@ -545,7 +545,7 @@ serve(async (req) => {
     let val = validate(article,contract);
     await log(env,runId,item.id,"sectioned_contract_gate","contract-validator",val.passed?"ok":"error",val,val.passed?undefined:"error_contract_validation",val.issues.join("; "));
     if (!dryRun && contract.min && val.wordCount < contract.min) {
-      for (let i=1;i<=2 && val.wordCount < contract.min;i++) {
+      for (let i=1;i<=1 && val.wordCount < contract.min;i++) {
         const missing = contract.min - val.wordCount;
         const out = await agent(env,`expansion-${i}`,promptExpansion(master,contract,article,val,missing),"OPENROUTER_MODEL_CONTENT_WRITER",70000);
         assertKeys(out,["section_html"]);
@@ -555,89 +555,140 @@ serve(async (req) => {
         await log(env,runId,item.id,`expansion_${i}`,"content-writer",val.passed?"ok":"error",{missing_before:missing,validation:val,result:redact(out)},val.passed?undefined:"error_contract_validation",val.issues.join("; "));
       }
     }
-    if (!dryRun && !val.passed && val.wordCount >= Math.max(500,Math.round((contract.min||1000)*0.45))) {
+    // Structural integrity check: if missing critical elements, attempt repair
+    const h2Coverage = contract.h2.length ? (contract.h2.length - val.missingH2.length) / contract.h2.length : 1;
+    const structurallyBroken = val.missingH1 || val.missingCta || h2Coverage < 0.75 || (contract.faq.length > 0 && val.missingFaq.length > contract.faq.length * 0.5);
+    const wordCountIssueOnly = !structurallyBroken && !val.missingKeyword && val.wordCount >= Math.max(500, Math.round((contract.min || 1000) * 0.6));
+
+    if (!dryRun && structurallyBroken && val.wordCount >= Math.max(500, Math.round((contract.min || 1000) * 0.45))) {
       const beforeRepair = val;
-      const out = await agent(env,"final-repair",promptRepair(master,contract,article,val),"OPENROUTER_MODEL_CONTENT_WRITER",70000);
-      if (typeof out.article_html === "string") {
-        const repaired = clean(out.article_html);
-        const repairedVal = validate(repaired,contract);
-        const shouldAccept = repairedVal.passed || validationDistance(repairedVal,contract) < validationDistance(val,contract) || repairedVal.issues.length < val.issues.length;
-        if (shouldAccept) { article = repaired; val = repairedVal; }
-      }
-      await log(env,runId,item.id,"final_repair","content-writer",val.passed?"ok":"error",{accepted:val!==beforeRepair,validation:val,previous_validation:beforeRepair,result:redact(out)},val.passed?undefined:"error_contract_validation",val.issues.join("; "));
-    }
-    // Run EEAT + Customer Journey + Editorial Logic in PARALLEL to save wall-time
-    let eeat: J = { eeat_score: val.passed ? 80 : 55, passes: val.passed, issues: val.issues, required_human_review: !val.passed };
-    let footerZone = "";
-
-    if (dryRun) {
-      // dry_run: skip AI calls
-      await log(env, runId, item.id, "eeat", "eeat-validator", "ok", redact(eeat));
-      footerZone = buildFooterZone({}, {}, contract, val, article, String(project?.nombremarca || ""), language);
-      article = assemble(contract, parts, language, footerZone);
-      await log(env, runId, item.id, "footer_zone", "footer-zone-generator", "ok", { dry_run: true }).catch(() => {});
-    } else {
-      const footerModel = Deno.env.get("OPENROUTER_MODEL_FOOTER_ZONE") || Deno.env.get("OPENROUTER_MODEL_CONTENT_WRITER") || "";
-      const orHeaders = {
-        authorization: "Bearer " + env.openRouterKey,
-        "content-type": "application/json",
-        "HTTP-Referer": "https://github.com/accesos-seo/ops-control-plane",
-        "X-Title": "seo-sectioned-engine",
-      };
-      const fetchJson = async function(prompt: string): Promise<J> {
-        if (!footerModel || !env.openRouterKey) return {};
-        try {
-          const ac = new AbortController();
-          const to = setTimeout(() => ac.abort(), 35000);
-          try {
-            const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-              method: "POST",
-              signal: ac.signal,
-              headers: orHeaders,
-              body: JSON.stringify({
-                model: footerModel,
-                messages: [{ role: "system", content: "Respond with valid JSON only. No markdown." }, { role: "user", content: prompt }],
-                response_format: { type: "json_object" },
-              }),
-            });
-            if (!res.ok) return {};
-            const d = await res.json();
-            return JSON.parse(d?.choices?.[0]?.message?.content || "{}");
-          } finally {
-            clearTimeout(to);
-          }
-        } catch { return {}; }
-      };
-
-      const eeatPromise: Promise<J> = agent(env, "eeat-validator", promptEeat(article, val, contract), "OPENROUTER_MODEL_EEAT_VALIDATOR", 30000)
-        .catch(function(e) { return { eeat_score: val.passed ? 80 : 55, passes: val.passed, issues: val.issues, required_human_review: !val.passed, _eeat_error: err(e) }; });
-      const cjPromise: Promise<J> = fetchJson(promptCustomerJourney(master, seo, contract, language));
-      const elPromise: Promise<J> = fetchJson(promptEditorialLogic(master, seo, contract, val, language));
-
-      const [eeatResult, cjData, elData] = await Promise.all([eeatPromise, cjPromise, elPromise]);
-      eeat = eeatResult;
-      await log(env, runId, item.id, "eeat", "eeat-validator", (eeatResult as J)._eeat_error ? "error" : "ok", redact(eeatResult)).catch(() => {});
-
       try {
-        footerZone = buildFooterZone(cjData, elData, contract, val, article, String(project?.nombremarca || ""), language);
-        article = assemble(contract, parts, language, footerZone);
-        await log(env, runId, item.id, "footer_zone", "footer-zone-generator", "ok", {
-          cj_stages: Array.isArray((cjData as J).stages) ? ((cjData as J).stages as J[]).length : 0,
+        const out = await agent(env, "final-repair", promptRepair(master, contract, article, val), "OPENROUTER_MODEL_CONTENT_WRITER", 50000);
+        if (typeof out.article_html === "string") {
+          const repaired = clean(out.article_html);
+          const repairedVal = validate(repaired, contract);
+          const shouldAccept = repairedVal.passed || validationDistance(repairedVal, contract) < validationDistance(val, contract) || repairedVal.issues.length < val.issues.length;
+          if (shouldAccept) { article = repaired; val = repairedVal; }
+        }
+        await log(env, runId, item.id, "final_repair", "content-writer", val.passed ? "ok" : "error", { accepted: val !== beforeRepair, validation: val, previous_validation: beforeRepair, result: redact(out) }, val.passed ? undefined : "error_contract_validation", val.issues.join("; "));
+      } catch (re) {
+        await log(env, runId, item.id, "final_repair", "content-writer", "error", { reason: err(re), validation: val }, "error_repair_failed", err(re)).catch(() => {});
+      }
+    } else if (!val.passed && wordCountIssueOnly) {
+      await log(env, runId, item.id, "final_repair_skipped", "orchestrator", "skipped", { reason: "structural_ok_word_overshoot_only", validation: val }).catch(() => {});
+    }
+
+    // Build initial footer zone (no AI data) and SAVE IMMEDIATELY
+    const brandName = String(project?.nombremarca || "");
+    let footerZone = buildFooterZone({}, {}, contract, val, article, brandName, language);
+    article = assemble(contract, parts, language, footerZone);
+
+    const initialStatus = val.passed ? "published" : "pending_review";
+    const initialMsg = val.passed ? "Artículo generado. Contrato validado. Sin publicación automática." : "Artículo generado; requiere revisión del Content Manager.";
+    const baselineEeat: J = { eeat_score: val.passed ? 80 : 55, passes: val.passed, issues: val.issues, required_human_review: !val.passed };
+
+    if (!dryRun) {
+      await patch(env, "content_items", item.id, {
+        article_content: article,
+        meta_description: contract.metaDescription || item.meta_description || "",
+        slug: contract.slug || item.slug || "",
+        content_score: val.passed ? 80 : 55,
+        word_count: val.wordCount,
+        actual_word_count: val.wordCount,
+        character_count: article.length,
+        status: initialStatus,
+        status_wp: "pending",
+        status_wp_msg: initialMsg,
+        processed_at: new Date().toISOString(),
+        custom_metadata: mergeMeta(item.custom_metadata, {
+          generation_run_id: runId,
+          seo_swarm_engine_version: VERSION,
+          brief_contract: contract,
+          contract_validation: val,
+          contract_passed: val.passed,
+          quality_gate: val.passed ? "passed" : "failed_contract",
+          eeat: baselineEeat,
+          required_human_review: !val.passed,
+          publication: false,
+          image_generated: false,
+          generation_strategy: "sectioned_save_early",
+          footer_zone_enriched: false,
+        }),
+      });
+      await log(env, runId, item.id, "early_complete", "orchestrator", val.passed ? "ok" : "error", { status_initial: initialStatus, latency_ms: Date.now() - t0, contract_validation: val, footer_zone: "basic_no_ai" }, val.passed ? undefined : "error_contract_validation", val.issues.join("; ")).catch(() => {});
+    }
+
+    // Best-effort AI enrichment: EEAT + Customer Journey + Editorial Logic in parallel
+    if (!dryRun) {
+      try {
+        const footerModel = Deno.env.get("OPENROUTER_MODEL_FOOTER_ZONE") || Deno.env.get("OPENROUTER_MODEL_CONTENT_WRITER") || "";
+        const orHeaders = {
+          authorization: "Bearer " + env.openRouterKey,
+          "content-type": "application/json",
+          "HTTP-Referer": "https://github.com/accesos-seo/ops-control-plane",
+          "X-Title": "seo-sectioned-engine",
+        };
+        const fetchJson = async function(prompt: string): Promise<J> {
+          if (!footerModel || !env.openRouterKey) return {};
+          try {
+            const ac = new AbortController();
+            const to = setTimeout(() => ac.abort(), 25000);
+            try {
+              const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST", signal: ac.signal, headers: orHeaders,
+                body: JSON.stringify({ model: footerModel, messages: [{ role: "system", content: "Respond with valid JSON only. No markdown." }, { role: "user", content: prompt }], response_format: { type: "json_object" } }),
+              });
+              if (!res.ok) return {};
+              const d = await res.json();
+              return JSON.parse(d?.choices?.[0]?.message?.content || "{}");
+            } finally { clearTimeout(to); }
+          } catch { return {}; }
+        };
+
+        const eeatPromise: Promise<J> = agent(env, "eeat-validator", promptEeat(article, val, contract), "OPENROUTER_MODEL_EEAT_VALIDATOR", 25000)
+          .catch(function(e) { return { eeat_score: val.passed ? 80 : 55, passes: val.passed, issues: val.issues, required_human_review: !val.passed, _eeat_error: err(e) }; });
+        const cjPromise: Promise<J> = fetchJson(promptCustomerJourney(master, seo, contract, language));
+        const elPromise: Promise<J> = fetchJson(promptEditorialLogic(master, seo, contract, val, language));
+
+        const [eeatResult, cjData, elData] = await Promise.all([eeatPromise, cjPromise, elPromise]);
+        const enrichedFooter = buildFooterZone(cjData, elData, contract, val, article, brandName, language);
+        const enrichedArticle = assemble(contract, parts, language, enrichedFooter);
+
+        await patch(env, "content_items", item.id, {
+          article_content: enrichedArticle,
+          custom_metadata: mergeMeta(item.custom_metadata, {
+            generation_run_id: runId,
+            seo_swarm_engine_version: VERSION,
+            brief_contract: contract,
+            contract_validation: val,
+            contract_passed: val.passed,
+            quality_gate: val.passed ? "passed" : "failed_contract",
+            eeat: eeatResult,
+            required_human_review: !val.passed,
+            publication: false,
+            image_generated: false,
+            generation_strategy: "sectioned_save_early",
+            footer_zone_enriched: true,
+            footer_zone_cj_stages: Array.isArray((cjData as J).stages) ? ((cjData as J).stages as unknown[]).length : 0,
+            footer_zone_el_decisions: Array.isArray((elData as J).key_editorial_decisions) ? ((elData as J).key_editorial_decisions as unknown[]).length : 0,
+          }),
+        });
+
+        await log(env, runId, item.id, "eeat", "eeat-validator", (eeatResult as J)._eeat_error ? "error" : "ok", redact(eeatResult)).catch(() => {});
+        await log(env, runId, item.id, "footer_zone_enriched", "footer-zone-generator", "ok", {
+          cj_stages: Array.isArray((cjData as J).stages) ? ((cjData as J).stages as unknown[]).length : 0,
           el_decisions: Array.isArray((elData as J).key_editorial_decisions) ? ((elData as J).key_editorial_decisions as unknown[]).length : 0,
         }).catch(() => {});
-      } catch (fze) {
-        footerZone = buildFooterZone({}, {}, contract, val, article, String(project?.nombremarca || ""), language);
-        article = assemble(contract, parts, language, footerZone);
-        await log(env, runId, item.id, "footer_zone", "footer-zone-generator", "error", { message: err(fze) }).catch(() => {});
+        await log(env, runId, item.id, "complete", "orchestrator", val.passed ? "ok" : "error", { status_final: initialStatus, latency_ms: Date.now() - t0, contract_validation: val, enriched: true }, val.passed ? undefined : "error_contract_validation", val.issues.join("; ")).catch(() => {});
+      } catch (enrichErr) {
+        await log(env, runId, item.id, "enrichment_skipped", "orchestrator", "error", { reason: err(enrichErr), note: "Article already saved with basic footer" }).catch(() => {});
+        await log(env, runId, item.id, "complete", "orchestrator", val.passed ? "ok" : "error", { status_final: initialStatus, latency_ms: Date.now() - t0, contract_validation: val, enriched: false }, val.passed ? undefined : "error_contract_validation", val.issues.join("; ")).catch(() => {});
       }
+    } else {
+      await log(env, runId, item.id, "complete", "orchestrator", "dry_run", { latency_ms: Date.now() - t0, contract_validation: val }).catch(() => {});
     }
 
-    const score = Number(eeat.eeat_score || (val.passed?80:55));
-    const status = val.passed ? "published" : "pending_review";
-    const msg = val.passed ? "Artículo generado. Contrato validado. Sin publicación automática." : "Artículo generado; requiere revisión.";
-    if (!dryRun) await patch(env,"content_items",item.id,{article_content:article,meta_description:contract.metaDescription||item.meta_description||"",slug:contract.slug||item.slug||"",content_score:Number.isFinite(score)?score:null,word_count:val.wordCount,actual_word_count:val.wordCount,character_count:article.length,status,status_wp:"pending",status_wp_msg:msg,processed_at:new Date().toISOString(),custom_metadata:mergeMeta(item.custom_metadata,{generation_run_id:runId,seo_swarm_engine_version:VERSION,brief_contract:contract,contract_validation:val,contract_passed:val.passed,quality_gate:val.passed?"passed":"failed_contract",eeat,required_human_review:!val.passed,publication:false,image_generated:false,generation_strategy:"sectioned"})});
-    await log(env,runId,item.id,"complete","orchestrator",val.passed?"ok":"error",{status_final:dryRun?"dry_run":status,latency_ms:Date.now()-t0,contract_validation:val},val.passed?undefined:"error_contract_validation",val.issues.join("; "));
-    return js({success:true,contract_passed:val.passed,run_id:runId,item_id:item.id,status:dryRun?"dry_run":status,contract_validation:val},val.passed?200:202);
+    return js({ success: true, contract_passed: val.passed, run_id: runId, item_id: item.id, status: dryRun ? "dry_run" : initialStatus, contract_validation: val }, val.passed ? 200 : 202);
   } catch(e) {
     const msg = err(e), code = classify(msg);
     if (env && item) await log(env,runId,item.id,"fatal","orchestrator","error",{message:msg,partial_words:words(strip(partialHtml))},code,msg).catch(()=>{});
