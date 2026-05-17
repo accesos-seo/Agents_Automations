@@ -1,0 +1,13 @@
+# Credenciales — nunca subir a GitHub
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
