@@ -221,29 +221,37 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 
   // ── CUSTOMER JOURNEY TAB ──────────────────────────────────────
   const stages: J[] = Array.isArray(cj.stages) ? cj.stages : [];
-  const stagesInnerHtml = stages.map(function(s, i) {
-    const icon = esc(String(s.icon_label || "◆"));
-    const stageNum = String(s.number || i + 1);
-    const stageName = esc(String(s.name || ""));
-    const userStateHtml = s.user_state ? '<div class="seo-fz-cj-field"><span class="seo-fz-cj-field-label">Estado del usuario</span><p>' + esc(String(s.user_state)) + "</p></div>" : "";
-    const userNeedHtml = '<div class="seo-fz-cj-field"><span class="seo-fz-cj-field-label">' + L.userNeed + "</span><p>" + esc(String(s.user_need || "")) + "</p></div>";
-    const contentResponseHtml = '<div class="seo-fz-cj-field"><span class="seo-fz-cj-field-label">' + L.contentResponse + "</span><p>" + esc(String(s.content_response || "")) + "</p></div>";
-    const refHtml = s.section_reference ? '<div class="seo-fz-cj-ref">→ ' + esc(String(s.section_reference)) + "</div>" : "";
-    const arrowHtml = i < stages.length - 1 ? '<div class="seo-fz-cj-arrow" aria-hidden="true">→</div>' : "";
-    return '<div class="seo-fz-cj-stage">' +
-      '<div class="seo-fz-cj-stage-header">' +
-      '<span class="seo-fz-cj-icon">' + icon + "</span>" +
-      '<span class="seo-fz-cj-stage-num">' + L.stage + " " + stageNum + "</span>" +
-      "</div>" +
-      '<div class="seo-fz-cj-stage-name">' + stageName + "</div>" +
-      userStateHtml + userNeedHtml + contentResponseHtml + refHtml +
-      "</div>" + arrowHtml;
+  const cjGradId = uid + "-cjg";
+  const svgCount = Math.min(stages.length, 6);
+  const svgPositions: Array<{x:number;y:number}> = [];
+  for (let i = 0; i < svgCount; i++) {
+    svgPositions.push({ x: svgCount === 1 ? 500 : Math.round(100 + i * 800 / (svgCount - 1)), y: i % 2 === 0 ? 72 : 28 });
+  }
+  let svgPath = svgPositions.length > 0 ? "M " + svgPositions[0].x + "," + svgPositions[0].y : "";
+  for (let i = 1; i < svgPositions.length; i++) {
+    const prev = svgPositions[i - 1], curr = svgPositions[i], mx = Math.round((prev.x + curr.x) / 2);
+    svgPath += " C " + mx + "," + prev.y + " " + mx + "," + curr.y + " " + curr.x + "," + curr.y;
+  }
+  const svgNodes = svgPositions.map(function(p, i) {
+    return '<circle cx="' + p.x + '" cy="' + p.y + '" r="18" fill="#14141B" stroke="url(#' + cjGradId + ')" stroke-width="1.5"/>' +
+      '<text x="' + p.x + '" y="' + (p.y + 5) + '" text-anchor="middle" font-size="13" font-weight="700" fill="#9B8CFF" font-family="system-ui,sans-serif">' + (i + 1) + "</text>";
   }).join("");
-  const fallbackHtml = '<div class="seo-fz-cj-fallback"><p><em>Customer journey generado con datos del brief.</em></p><p><strong>Keyword:</strong> ' + esc(c.keyword || "—") + "</p><p><strong>" + L.intent + ":</strong> " + esc(String(c.intent || "—")) + "</p><p><strong>" + L.audience + ":</strong> " + esc(String(c.audience || "—")) + "</p></div>";
-  const stagesHtml = stages.length
-    ? '<div class="seo-fz-cj-stages">' + stagesInnerHtml + "</div>"
-    : fallbackHtml;
-
+  const cjFlowSvg = svgCount > 0 ? '<div class="seo-fz-cj-flow"><span class="seo-fz-cj-flow-label">READER FLOW MAP</span>' +
+    '<svg viewBox="0 0 1000 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">' +
+    '<defs><linearGradient id="' + cjGradId + '" x1="0%" y1="0%" x2="100%" y2="0%">' +
+    '<stop offset="0%" stop-color="#6C5CFF"/><stop offset="100%" stop-color="#6EE7FF"/></linearGradient></defs>' +
+    (svgPath ? '<path d="' + svgPath + '" stroke="url(#' + cjGradId + ')" stroke-width="1.5" fill="none" opacity="0.5"/>' : "") +
+    svgNodes + "</svg></div>" : "";
+  const fallbackHtml = '<div class="seo-fz-cj-fallback"><p><strong>Keyword:</strong> ' + esc(c.keyword || "—") + "</p><p><strong>" + L.intent + ":</strong> " + esc(String(c.intent || "—")) + "</p><p><strong>" + L.audience + ":</strong> " + esc(String(c.audience || "—")) + "</p></div>";
+  const stagesGridHtml = stages.length ? '<div class="seo-fz-cj-grid">' + stages.map(function(s, i) {
+    const num = String(s.number || i + 1);
+    const name = esc(String(s.name || ""));
+    const need = s.user_need ? '<div class="seo-fz-cj-card-field"><span class="seo-fz-cj-card-lbl">' + L.userNeed + '</span><p class="seo-fz-cj-card-txt">' + esc(String(s.user_need)) + "</p></div>" : "";
+    const state = s.user_state ? '<div class="seo-fz-cj-card-field"><span class="seo-fz-cj-card-lbl">Estado</span><p class="seo-fz-cj-card-txt">' + esc(String(s.user_state)) + "</p></div>" : "";
+    const resp = s.content_response ? '<div class="seo-fz-cj-card-field"><span class="seo-fz-cj-card-lbl">' + L.contentResponse + '</span><p class="seo-fz-cj-card-txt">' + esc(String(s.content_response)) + "</p></div>" : "";
+    const ref = s.section_reference ? '<div class="seo-fz-cj-card-ref"><span class="seo-fz-cj-ref-pill">→ ' + esc(String(s.section_reference)) + "</span></div>" : "";
+    return '<div class="seo-fz-cj-card"><div class="seo-fz-cj-card-hdr"><span class="seo-fz-cj-card-num">' + num + "</span><span class=\"seo-fz-cj-card-name\">" + name + "</span></div>" + need + state + resp + ref + "</div>";
+  }).join("") + "</div>" : fallbackHtml;
   const cjInsight = function(title: string, content: string) {
     return '<div class="seo-fz-cj-insight"><h4 class="seo-fz-insight-title">' + title + "</h4><p>" + content + "</p></div>";
   };
@@ -253,7 +261,7 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
     cj.audience_insight ? cjInsight(L.audienceInsight, esc(String(cj.audience_insight))) : "",
   ].filter(Boolean).join("\n");
   const cjInsightsBlock = cjRationale ? '<div class="seo-fz-cj-insights">' + cjRationale + "</div>" : "";
-  const cjHtml = '<div class="seo-fz-cj">' + stagesHtml + cjInsightsBlock + "</div>";
+  const cjHtml = '<div>' + cjFlowSvg + stagesGridHtml + cjInsightsBlock + "</div>";
 
   // ── EDITORIAL LOGIC TAB ───────────────────────────────────────
   const decisions: string[] = Array.isArray(el.key_editorial_decisions) ? el.key_editorial_decisions.map(String) : [];
@@ -278,18 +286,6 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
   const kw = seoNorm(c.keyword || "");
   const mtLen = (c.metaTitle || "").length;
   const mdLen = (c.metaDescription || "").length;
-  const ogTitle = c.metaTitle || c.h1 || "—";
-  const ogDesc = c.metaDescription || "—";
-
-  const charBadge = function(len: number, idealMin: number, idealMax: number) {
-    const cls = len >= idealMin && len <= idealMax ? "ok" : (len >= idealMin - 15 && len <= idealMax + 20 ? "warn" : "err");
-    return '<span class="seo-fz-seo-badge seo-fz-seo-badge--' + cls + '">' + len + " " + L.chars + "</span>";
-  };
-
-  const checkItem = function(state: "ok" | "warn" | "err", label: string) {
-    const icon = state === "ok" ? "✅" : state === "warn" ? "⚠️" : "❌";
-    return '<li class="seo-fz-seo-check seo-fz-seo-check--' + state + '">' + icon + " " + esc(label) + "</li>";
-  };
 
   const kwInH1 = !!kw && seoNorm(c.h1 || "").includes(kw);
   const kwInMeta = !!kw && seoNorm(c.metaTitle || "").includes(kw);
@@ -303,18 +299,58 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
   const wcWarn = !wcOk && wcMin > 0 && val.wordCount >= Math.round(wcMin * 0.88);
   const wcLabel = L.checkWordCount + ": " + val.wordCount + (wcMin ? " / " + wcMin + (wcMax ? "–" + wcMax : "+") : "");
 
-  const checklistHtml = "<ul class=\"seo-fz-seo-checklist\">" +
-    checkItem(!val.missingH1 ? "ok" : "err", L.checkH1Present) +
-    checkItem(kwInH1 ? "ok" : (kw ? "err" : "warn"), L.checkKwInH1) +
-    checkItem(kwInMeta ? "ok" : (kw && c.metaTitle ? "err" : "warn"), L.checkKwInMeta) +
-    checkItem(kwInDesc ? "ok" : (kw && c.metaDescription ? "warn" : "warn"), L.checkKwInDesc) +
-    checkItem(mtState, L.checkMetaTitleLen + " (" + mtLen + " " + L.chars + ")") +
-    checkItem(mdState, L.checkMetaDescLen + " (" + mdLen + " " + L.chars + ")") +
-    checkItem(faqOk ? "ok" : (c.faq.length > 0 ? "warn" : "err"), L.checkFaq + (c.faq.length ? " (" + c.faq.length + ")" : "")) +
-    checkItem(!val.missingCta ? "ok" : "warn", L.checkCta) +
-    checkItem(c.slug ? "ok" : "warn", L.checkSlug) +
-    checkItem(wcOk ? "ok" : (wcWarn ? "warn" : "err"), wcLabel) +
-    "</ul>";
+  // Build check items for score gauge
+  type CheckState = "ok"|"warn"|"err";
+  const checks: Array<{state:CheckState;label:string}> = [
+    { state: (!val.missingH1 ? "ok" : "err"), label: L.checkH1Present },
+    { state: (kwInH1 ? "ok" : (kw ? "err" : "warn")), label: L.checkKwInH1 },
+    { state: (kwInMeta ? "ok" : (kw && c.metaTitle ? "err" : "warn")), label: L.checkKwInMeta },
+    { state: (kwInDesc ? "ok" : "warn"), label: L.checkKwInDesc },
+    { state: mtState, label: L.checkMetaTitleLen + " (" + mtLen + " " + L.chars + ")" },
+    { state: mdState, label: L.checkMetaDescLen + " (" + mdLen + " " + L.chars + ")" },
+    { state: (faqOk ? "ok" : (c.faq.length > 0 ? "warn" : "err")), label: L.checkFaq + (c.faq.length ? " (" + c.faq.length + ")" : "") },
+    { state: (!val.missingCta ? "ok" : "warn"), label: L.checkCta },
+    { state: (c.slug ? "ok" : "warn"), label: L.checkSlug },
+    { state: (wcOk ? "ok" : (wcWarn ? "warn" : "err")), label: wcLabel },
+  ];
+  const cOk = checks.filter(function(x){return x.state==="ok";}).length;
+  const cWarn = checks.filter(function(x){return x.state==="warn";}).length;
+  const cErr = checks.filter(function(x){return x.state==="err";}).length;
+  const scoreNum = Math.round((cOk + cWarn * 0.5) / checks.length * 100);
+  const seoGradId = uid + "-sg";
+  const r = 40, circ = +(2 * Math.PI * r).toFixed(2), dashOff = +((1 - scoreNum / 100) * circ).toFixed(2);
+  const gaugeHtml = '<div class="seo-fz-gauge-wrap">' +
+    '<svg width="140" height="140" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">' +
+    '<defs><linearGradient id="' + seoGradId + '" x1="0%" y1="100%" x2="100%" y2="0%">' +
+    '<stop offset="0%" stop-color="#6C5CFF"/><stop offset="100%" stop-color="#6EE7FF"/></linearGradient></defs>' +
+    '<circle cx="50" cy="50" r="' + r + '" fill="none" stroke="rgba(120,120,255,0.1)" stroke-width="8"/>' +
+    '<circle cx="50" cy="50" r="' + r + '" fill="none" stroke="url(#' + seoGradId + ')" stroke-width="8" stroke-dasharray="' + circ + '" stroke-dashoffset="' + dashOff + '" stroke-linecap="round" transform="rotate(-90 50 50)"/>' +
+    '<text x="50" y="45" text-anchor="middle" font-size="22" font-weight="800" fill="white" font-family="system-ui,sans-serif">' + scoreNum + "</text>" +
+    '<text x="50" y="59" text-anchor="middle" font-size="8" font-weight="600" fill="#475569" letter-spacing="1" font-family="system-ui,sans-serif">SCORE</text>' +
+    "</svg>" +
+    '<p class="seo-fz-gauge-checks">' + cOk + " of " + checks.length + ' <em>checks</em></p>' +
+    '<p class="seo-fz-gauge-detail">' + cWarn + " warning · " + cErr + " errors</p>" +
+    '<div class="seo-fz-gauge-pills">' +
+    (cOk > 0 ? '<span class="seo-fz-gauge-pill seo-fz-gauge-pill--ok">' + cOk + " ok</span>" : "") +
+    (cWarn > 0 ? '<span class="seo-fz-gauge-pill seo-fz-gauge-pill--warn">' + cWarn + " warn</span>" : "") +
+    "</div></div>";
+
+  const metaBadge = function(len: number, mn: number, mx: number) {
+    const s = len >= mn && len <= mx ? "ok" : (len >= mn - 15 && len <= mx + 20 ? "warn" : "err");
+    return '<span class="seo-fz-seo-meta-badge seo-fz-seo-meta-badge--' + s + '">' + len + " " + L.chars + "</span>";
+  };
+  const metaSection = '<div class="seo-fz-seo-meta">' +
+    '<div class="seo-fz-seo-meta-top-lbl">META</div>' +
+    '<div class="seo-fz-seo-meta-row"><div class="seo-fz-seo-meta-hdr"><span class="seo-fz-seo-meta-lbl">META TITLE</span>' + metaBadge(mtLen,50,60) + '</div><div class="seo-fz-seo-meta-val">' + esc(c.metaTitle||"—") + "</div></div>" +
+    '<div class="seo-fz-seo-meta-row"><div class="seo-fz-seo-meta-hdr"><span class="seo-fz-seo-meta-lbl">SLUG</span></div><div class="seo-fz-seo-meta-val seo-fz-seo-meta-val--slug">' + esc(c.slug||"—") + "</div></div>" +
+    '<div class="seo-fz-seo-meta-row"><div class="seo-fz-seo-meta-hdr"><span class="seo-fz-seo-meta-lbl">META DESCRIPTION</span>' + metaBadge(mdLen,140,160) + '</div><div class="seo-fz-seo-meta-val">' + esc(c.metaDescription||"—") + "</div></div>" +
+    '<div class="seo-fz-seo-meta-row"><div class="seo-fz-seo-meta-hdr"><span class="seo-fz-seo-meta-lbl">H1</span></div><div class="seo-fz-seo-meta-val">' + esc(c.h1||"—") + "</div></div>" +
+    "</div>";
+
+  const clGrid = '<div class="seo-fz-seo-cl-grid">' + checks.map(function(ch) {
+    const badge = ch.state==="ok" ? "✓ PASS" : ch.state==="warn" ? "! WARN" : "✗ FAIL";
+    return '<div class="seo-fz-seo-cl-card seo-fz-seo-cl-card--' + ch.state + '"><div class="seo-fz-seo-cl-badge seo-fz-seo-cl-badge--' + ch.state + '">' + badge + '</div><p class="seo-fz-seo-cl-text">' + esc(ch.label) + "</p></div>";
+  }).join("") + "</div>";
 
   // Extract images from article HTML
   const imgMatches = Array.from(articleHtml.matchAll(/<img[^>]*>/gi));
@@ -335,45 +371,19 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
     return '<div class="seo-fz-seo-img-row">' +
       '<div class="seo-fz-seo-img-src"><code>' + esc(srcShort) + "</code></div>" +
       '<div class="seo-fz-seo-img-fields">' +
-      '<span class="seo-fz-seo-img-label">' + L.altCurrent + '</span>' +
+      '<span class="seo-fz-seo-img-field-lbl">' + L.altCurrent + '</span>' +
       '<span class="seo-fz-seo-img-val' + (alt ? "" : " seo-fz-seo-img-val--empty") + '">' + (alt ? esc(alt) : "—") + "</span>" +
-      '<span class="seo-fz-seo-img-label">' + L.altSuggested + '</span>' +
-      '<span class="seo-fz-seo-img-val seo-fz-seo-img-val--suggested">' + esc(suggestedAlt) + "</span>" +
-      (title ? '<span class="seo-fz-seo-img-label">' + L.titleAttr + '</span><span class="seo-fz-seo-img-val">' + esc(title) + "</span>" : "") +
+      '<span class="seo-fz-seo-img-field-lbl">' + L.altSuggested + '</span>' +
+      '<span class="seo-fz-seo-img-val seo-fz-seo-img-val--sug">' + esc(suggestedAlt) + "</span>" +
+      (title ? '<span class="seo-fz-seo-img-field-lbl">' + L.titleAttr + '</span><span class="seo-fz-seo-img-val">' + esc(title) + "</span>" : "") +
       "</div></div>";
   }).filter(Boolean);
 
-  const imgsHtml = imgRows.length
-    ? imgRows.join("")
-    : '<p class="seo-fz-seo-no-imgs">' + esc(L.noImagesFound) + "</p>";
-
   const seoHtml = '<div class="seo-fz-seo">' +
-    '<div class="seo-fz-seo-section">' +
-    '<h3 class="seo-fz-seo-section-title">' + L.metaOg + "</h3>" +
-    '<div class="seo-fz-seo-meta-grid">' +
-    '<div class="seo-fz-seo-meta-field seo-fz-seo-meta-field--full">' +
-    '<div class="seo-fz-seo-meta-header"><span class="seo-fz-seo-meta-label">Meta title</span>' + charBadge(mtLen, 50, 60) + "</div>" +
-    '<div class="seo-fz-seo-meta-value">' + esc(c.metaTitle || "—") + "</div></div>" +
-    '<div class="seo-fz-seo-meta-field seo-fz-seo-meta-field--full">' +
-    '<div class="seo-fz-seo-meta-header"><span class="seo-fz-seo-meta-label">Meta description</span>' + charBadge(mdLen, 140, 160) + "</div>" +
-    '<div class="seo-fz-seo-meta-value">' + esc(c.metaDescription || "—") + "</div></div>" +
-    '<div class="seo-fz-seo-meta-field">' +
-    '<div class="seo-fz-seo-meta-header"><span class="seo-fz-seo-meta-label">H1</span></div>' +
-    '<div class="seo-fz-seo-meta-value">' + esc(c.h1 || "—") + "</div></div>" +
-    '<div class="seo-fz-seo-meta-field">' +
-    '<div class="seo-fz-seo-meta-header"><span class="seo-fz-seo-meta-label">Slug</span></div>' +
-    '<div class="seo-fz-seo-meta-value seo-fz-seo-meta-value--slug">' + esc(c.slug || "—") + "</div></div>" +
-    '<div class="seo-fz-seo-og seo-fz-seo-meta-field--full">' +
-    '<div class="seo-fz-seo-og-title">Open Graph</div>' +
-    '<div class="seo-fz-seo-og-row"><code>og:title</code><span>' + esc(ogTitle) + "</span></div>" +
-    '<div class="seo-fz-seo-og-row"><code>og:description</code><span>' + esc(ogDesc.slice(0, 120) + (ogDesc.length > 120 ? "…" : "")) + "</span></div>" +
-    '<div class="seo-fz-seo-og-row"><code>og:type</code><span>article</span></div>' +
-    '<div class="seo-fz-seo-og-row"><code>og:image</code><span class="seo-fz-seo-og-note">' + esc(L.ogImageNote) + "</span></div>" +
-    "</div></div></div>" +
-    '<div class="seo-fz-seo-section"><h3 class="seo-fz-seo-section-title">' + L.seoChecklist + "</h3>" + checklistHtml + "</div>" +
-    '<div class="seo-fz-seo-section"><h3 class="seo-fz-seo-section-title">' + L.seoImages + "</h3>" +
-    '<p class="seo-fz-seo-img-note">' + esc(L.featuredImageNote) + "</p>" +
-    imgsHtml + "</div></div>";
+    '<div class="seo-fz-seo-top">' + gaugeHtml + metaSection + "</div>" +
+    '<div class="seo-fz-seo-cl-section"><div class="seo-fz-seo-cl-lbl">CHECKLIST</div>' + clGrid + "</div>" +
+    (imgRows.length ? '<div class="seo-fz-seo-img-section"><div class="seo-fz-seo-img-lbl">' + L.seoImages + '</div><p class="seo-fz-seo-img-note">' + esc(L.featuredImageNote) + "</p>" + imgRows.join("") + "</div>" : "") +
+    "</div>";
 
   // ── STYLES ─────────────────────────────────────────────────────
   const styles = `<style data-fz="1">
@@ -382,101 +392,103 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 ::-webkit-scrollbar-thumb{background:#6C5CFF;border-radius:999px}
 .seo-fz-sep{margin:48px 0 0;padding:0}
 .seo-fz-sep-line{height:2px;background:linear-gradient(90deg,transparent 0%,rgba(108,92,255,0.25) 20%,rgba(108,92,255,0.6) 50%,rgba(108,92,255,0.25) 80%,transparent 100%)}
-.seo-fz-wrapper{margin:32px 0 0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;color:#A8B3CF;background:#0B0B0F;border-radius:18px;border:1px solid rgba(120,120,255,0.12)}
-.seo-fz-header{display:flex;align-items:center;gap:12px;margin:0 0 24px;padding-bottom:24px;border-bottom:1px solid rgba(140,140,255,0.15)}
+.seo-fz-wrapper{margin:32px 0 0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;color:#94A3B8;background:#0B0B0F;border-radius:18px;border:1px solid rgba(120,120,255,0.12)}
+.seo-fz-header{display:flex;align-items:center;gap:12px;margin:0 0 0;padding-bottom:0;border-bottom:none}
 .seo-fz-header-line{flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(108,92,255,0.25))}
 .seo-fz-header-label{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9B8CFF;white-space:nowrap;padding:0 8px;text-shadow:0 0 12px rgba(155,140,255,0.5)}
-.seo-fz-tabs{display:flex;justify-content:space-between;gap:4px;padding:6px;background:#14141B;border-radius:14px;margin:0 0 8px;border:1px solid rgba(120,120,255,0.12)}
-.seo-fz-tab-sep{height:1px;background:rgba(140,140,255,0.15);margin:0 0 32px}
-.seo-fz-tab{flex:1;padding:12px 16px;border:none;background:transparent;border-radius:10px;cursor:pointer;transition:all .2s;text-align:left;display:flex;flex-direction:column;gap:2px}
-.seo-fz-tab-num{font-size:11px;font-weight:700;letter-spacing:.06em;color:#7C8FA6;transition:color .2s}
-.seo-fz-tab-main{font-size:13px;font-weight:600;color:#94A3B8;transition:color .2s;white-space:nowrap}
-.seo-fz-tab-sub{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#64748B;transition:color .2s}
-.seo-fz-tab:hover{background:#1B1B24}
-.seo-fz-tab:hover .seo-fz-tab-num{color:#9B8CFF}
-.seo-fz-tab:hover .seo-fz-tab-main{color:#A8B3CF}
-.seo-fz-tab:hover .seo-fz-tab-sub{color:#6B7280}
-.seo-fz-tab--active{background:rgba(108,92,255,0.12);border:1px solid rgba(108,92,255,0.35);box-shadow:0 0 12px rgba(108,92,255,0.15)}
-.seo-fz-tab--active .seo-fz-tab-num{color:#9B8CFF}
+.seo-fz-tabs{display:flex;gap:0;background:transparent;border-radius:0;border:none;border-bottom:1px solid rgba(140,140,255,0.15);margin:24px 0 32px;padding:0}
+.seo-fz-tab{flex:1;padding:14px 16px;display:flex;align-items:center;gap:10px;border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;position:relative;bottom:-1px;transition:all .2s;text-align:left}
+.seo-fz-tab-icon{width:34px;height:34px;border-radius:50%;border:1.5px solid rgba(120,120,255,0.2);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#64748B;flex-shrink:0;transition:all .2s}
+.seo-fz-tab-labels{display:flex;flex-direction:column;gap:2px}
+.seo-fz-tab-main{font-size:13px;font-weight:600;color:#64748B;white-space:nowrap;transition:color .2s}
+.seo-fz-tab-sub{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#475569;transition:color .2s}
+.seo-fz-tab:hover{border-bottom-color:rgba(108,92,255,0.3)}
+.seo-fz-tab:hover .seo-fz-tab-icon{border-color:rgba(108,92,255,0.4);color:#9B8CFF}
+.seo-fz-tab:hover .seo-fz-tab-main{color:#94A3B8}
+.seo-fz-tab--active{border-bottom-color:#6C5CFF}
+.seo-fz-tab--active .seo-fz-tab-icon{background:rgba(108,92,255,0.12);border-color:rgba(108,92,255,0.45);color:#9B8CFF}
 .seo-fz-tab--active .seo-fz-tab-main{color:#FFFFFF;font-weight:700}
 .seo-fz-tab--active .seo-fz-tab-sub{color:#6EE7FF}
 .seo-fz-panel{display:none}.seo-fz-panel--active{display:block}
-.seo-fz-assets{}.seo-fz-asset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+.seo-fz-asset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
 .seo-fz-asset-card{background:#1B1B24;border:1px solid rgba(120,120,255,0.12);border-radius:14px;padding:16px 18px;transition:background .2s}
 .seo-fz-asset-card:hover{background:#222230}
 .seo-fz-asset-card--wide{grid-column:span 2}.seo-fz-asset-card--full{grid-column:1/-1}
-.seo-fz-asset-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6EE7FF;margin:0 0 8px;text-shadow:0 0 8px rgba(110,231,255,0.25)}
+.seo-fz-asset-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6EE7FF;margin:0 0 8px;text-shadow:0 0 8px rgba(110,231,255,0.2)}
 .seo-fz-asset-value{font-size:14px;color:#FFFFFF;line-height:1.6}
 .seo-fz-kw-main{font-size:18px;font-weight:800;color:#FFFFFF;text-shadow:0 0 20px rgba(155,140,255,0.3)}
 .seo-fz-asset-tags{display:flex;flex-wrap:wrap;gap:8px}
 .seo-fz-tag{background:rgba(108,92,255,0.12);border:1px solid rgba(108,92,255,0.35);color:#C6BEFF;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500}
-.seo-fz-asset-ol,.seo-fz-asset-ul{margin:8px 0 0;padding:0 0 0 18px;font-size:13px;color:#CBD5E1;line-height:1.8}
-.seo-fz-cj{}.seo-fz-cj-stages{display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding:8px 0 24px;-webkit-overflow-scrolling:touch}
-.seo-fz-cj-stage{flex:0 0 220px;background:#1B1B24;border:1px solid rgba(120,120,255,0.15);border-radius:14px;padding:18px 16px;box-shadow:0 4px 24px rgba(0,0,0,0.4)}
-.seo-fz-cj-arrow{flex:0 0 auto;align-self:center;font-size:20px;color:#6C5CFF;padding:0 8px;font-weight:300;text-shadow:0 0 8px rgba(108,92,255,0.5)}
-.seo-fz-cj-stage-header{display:flex;align-items:center;gap:8px;margin:0 0 8px}
-.seo-fz-cj-icon{font-size:20px;line-height:1}
-.seo-fz-cj-stage-num{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9B8CFF}
-.seo-fz-cj-stage-name{font-size:15px;font-weight:700;color:#FFFFFF;margin:0 0 12px;line-height:1.3}
-.seo-fz-cj-field{margin:0 0 10px}
-.seo-fz-cj-field-label{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7CFFB2;margin:0 0 4px;text-shadow:0 0 8px rgba(124,255,178,0.2)}
-.seo-fz-cj-field p{margin:0;font-size:12px;color:#CBD5E1;line-height:1.6}
-.seo-fz-cj-ref{margin-top:10px;font-size:11px;color:#9B8CFF;font-style:italic;border-top:1px solid rgba(120,120,255,0.15);padding-top:8px}
+.seo-fz-asset-ol,.seo-fz-asset-ul{margin:8px 0 0;padding:0 0 0 18px;font-size:13px;color:#FFFFFF;line-height:1.8}
+.seo-fz-cj-flow{margin:0 0 24px;padding:20px 20px 16px;background:#14141B;border-radius:14px;border:1px solid rgba(120,120,255,0.1)}
+.seo-fz-cj-flow-label{display:block;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#475569;margin:0 0 16px}
+.seo-fz-cj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.seo-fz-cj-card{background:#1B1B24;border:1px solid rgba(120,120,255,0.12);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.seo-fz-cj-card-hdr{display:flex;align-items:flex-start;gap:10px}
+.seo-fz-cj-card-num{width:28px;height:28px;border-radius:50%;background:rgba(108,92,255,0.12);border:1.5px solid rgba(108,92,255,0.35);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#9B8CFF;flex-shrink:0;margin-top:2px}
+.seo-fz-cj-card-name{font-size:15px;font-weight:700;color:#FFFFFF;line-height:1.3}
+.seo-fz-cj-card-field{display:flex;flex-direction:column;gap:4px}
+.seo-fz-cj-card-lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#475569}
+.seo-fz-cj-card-txt{font-size:12px;color:#FFFFFF;line-height:1.6;margin:0}
+.seo-fz-cj-card-ref{margin-top:auto;padding-top:12px;border-top:1px solid rgba(120,120,255,0.1)}
+.seo-fz-cj-ref-pill{display:inline-flex;align-items:center;gap:4px;background:rgba(108,92,255,0.1);border:1px solid rgba(108,92,255,0.3);border-radius:20px;padding:4px 12px;font-size:11px;color:#9B8CFF;font-weight:500}
+.seo-fz-cj-fallback{background:#1B1B24;border-radius:14px;padding:20px;font-size:14px;color:#94A3B8}
 .seo-fz-cj-insights{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin:24px 0 0}
-.seo-fz-cj-insight{background:#1B1B24;border:1px solid rgba(108,92,255,0.25);border-radius:14px;padding:16px;box-shadow:0 0 12px rgba(108,92,255,0.08)}
-.seo-fz-insight-title{margin:0 0 8px;font-size:13px;font-weight:700;color:#9B8CFF;text-shadow:0 0 8px rgba(155,140,255,0.3)}
-.seo-fz-cj-insight p{margin:0;font-size:13px;color:#A8B3CF;line-height:1.6}
-.seo-fz-cj-fallback{background:#1B1B24;border-radius:14px;padding:20px;font-size:14px;color:#A8B3CF}
+.seo-fz-cj-insight{background:#1B1B24;border:1px solid rgba(108,92,255,0.2);border-radius:14px;padding:16px}
+.seo-fz-insight-title{margin:0 0 8px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9B8CFF}
+.seo-fz-cj-insight p{margin:0;font-size:13px;color:#FFFFFF;line-height:1.6}
 .seo-fz-el{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
 .seo-fz-el-block{background:#1B1B24;border:1px solid rgba(120,120,255,0.12);border-radius:14px;padding:18px}
-.seo-fz-el-block--highlight{background:rgba(108,92,255,0.08);border-color:rgba(108,92,255,0.35);box-shadow:0 0 12px rgba(108,92,255,0.12)}
-.seo-fz-el-title{margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#C084FC;text-shadow:0 0 8px rgba(192,132,252,0.25)}
-.seo-fz-el-block p{margin:0 0 8px;font-size:13px;color:#CBD5E1;line-height:1.7}
+.seo-fz-el-block--highlight{background:rgba(108,92,255,0.08);border-color:rgba(108,92,255,0.3)}
+.seo-fz-el-title{margin:0 0 8px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#C084FC;text-shadow:0 0 8px rgba(192,132,252,0.2)}
+.seo-fz-el-block p{margin:0 0 8px;font-size:13px;color:#FFFFFF;line-height:1.7}
 .seo-fz-el-block p:last-child{margin-bottom:0}
-.seo-fz-el-list{margin:0;padding:0 0 0 16px;font-size:13px;color:#CBD5E1;line-height:1.8}
-@media(max-width:640px){
-  .seo-fz-tabs{flex-direction:column}
-  .seo-fz-asset-card--wide{grid-column:span 1}
-  .seo-fz-cj-stages{flex-direction:column;overflow-x:visible}
-  .seo-fz-cj-arrow{transform:rotate(90deg);align-self:flex-start;padding:4px 0}
-  .seo-fz-el{grid-template-columns:1fr}
-}
-.seo-fz-seo{display:flex;flex-direction:column;gap:24px}
-.seo-fz-seo-section{background:#1B1B24;border:1px solid rgba(120,120,255,0.12);border-radius:14px;padding:20px}
-.seo-fz-seo-section-title{margin:0 0 16px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#FCD34D;text-shadow:0 0 8px rgba(252,211,77,0.25)}
-.seo-fz-seo-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.seo-fz-seo-meta-field{background:#14141B;border:1px solid rgba(120,120,255,0.12);border-radius:10px;padding:12px 14px}
-.seo-fz-seo-meta-field--full{grid-column:1/-1}
-.seo-fz-seo-meta-header{display:flex;align-items:center;justify-content:space-between;margin:0 0 6px}
-.seo-fz-seo-meta-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9B8CFF}
-.seo-fz-seo-meta-value{font-size:13px;color:#FFFFFF;line-height:1.6}
-.seo-fz-seo-meta-value--slug{font-family:monospace;font-size:12px;color:#6EE7FF}
-.seo-fz-seo-badge{padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700}
-.seo-fz-seo-badge--ok{background:rgba(124,255,178,0.15);color:#7CFFB2;border:1px solid rgba(124,255,178,0.3)}
-.seo-fz-seo-badge--warn{background:rgba(251,191,36,0.12);color:#FCD34D;border:1px solid rgba(251,191,36,0.25)}
-.seo-fz-seo-badge--err{background:rgba(239,68,68,0.12);color:#F87171;border:1px solid rgba(239,68,68,0.25)}
-.seo-fz-seo-og{background:#14141B;border:1px solid rgba(108,92,255,0.25);border-radius:10px;padding:14px;box-shadow:0 0 12px rgba(108,92,255,0.08)}
-.seo-fz-seo-og-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9B8CFF;margin:0 0 10px;text-shadow:0 0 8px rgba(155,140,255,0.3)}
-.seo-fz-seo-og-row{display:flex;gap:10px;align-items:baseline;margin:0 0 6px;font-size:12px}
-.seo-fz-seo-og-row code{flex:0 0 120px;color:#6EE7FF;font-size:11px}
-.seo-fz-seo-og-row span{color:#A8B3CF;line-height:1.5}
-.seo-fz-seo-og-note{color:#6B7280;font-style:italic}
-.seo-fz-seo-checklist{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
-.seo-fz-seo-check{font-size:13px;padding:8px 14px;border-radius:10px;line-height:1.5}
-.seo-fz-seo-check--ok{background:rgba(124,255,178,0.08);color:#7CFFB2;border:1px solid rgba(124,255,178,0.2)}
-.seo-fz-seo-check--warn{background:rgba(251,191,36,0.08);color:#FCD34D;border:1px solid rgba(251,191,36,0.2)}
-.seo-fz-seo-check--err{background:rgba(239,68,68,0.08);color:#F87171;border:1px solid rgba(239,68,68,0.2)}
-.seo-fz-seo-img-note{margin:0 0 16px;font-size:12px;color:#6B7280;font-style:italic}
-.seo-fz-seo-no-imgs{font-size:13px;color:#6B7280;font-style:italic;margin:0}
-.seo-fz-seo-img-row{border:1px solid rgba(120,120,255,0.12);border-radius:10px;padding:12px 14px;margin:0 0 10px;background:#14141B}
-.seo-fz-seo-img-src{margin:0 0 10px;overflow:hidden}
-.seo-fz-seo-img-src code{font-size:11px;color:#9B8CFF;word-break:break-all}
-.seo-fz-seo-img-fields{display:grid;grid-template-columns:100px 1fr;gap:4px 10px;align-items:baseline;font-size:12px}
-.seo-fz-seo-img-label{font-weight:700;color:#6EE7FF;text-transform:uppercase;font-size:10px;letter-spacing:.06em}
-.seo-fz-seo-img-val{color:#A8B3CF;line-height:1.5}
+.seo-fz-el-list{margin:0;padding:0 0 0 16px;font-size:13px;color:#FFFFFF;line-height:1.8}
+.seo-fz-seo{display:flex;flex-direction:column;gap:20px}
+.seo-fz-seo-top{display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start}
+.seo-fz-gauge-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;padding:20px 16px;background:#1B1B24;border:1px solid rgba(120,120,255,0.12);border-radius:14px;min-width:160px}
+.seo-fz-gauge-checks{margin:0;font-size:15px;font-weight:600;color:#FFFFFF;text-align:center}
+.seo-fz-gauge-checks em{color:#9B8CFF;font-style:normal}
+.seo-fz-gauge-detail{margin:0;font-size:11px;color:#475569;text-align:center}
+.seo-fz-gauge-pills{display:flex;gap:8px;margin-top:4px}
+.seo-fz-gauge-pill{padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700}
+.seo-fz-gauge-pill--ok{background:rgba(124,255,178,0.1);color:#7CFFB2;border:1px solid rgba(124,255,178,0.25)}
+.seo-fz-gauge-pill--warn{background:rgba(252,211,77,0.1);color:#FCD34D;border:1px solid rgba(252,211,77,0.25)}
+.seo-fz-seo-meta{background:#1B1B24;border:1px solid rgba(120,120,255,0.12);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.seo-fz-seo-meta-top-lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#FCD34D;margin:0 0 2px}
+.seo-fz-seo-meta-row{display:flex;flex-direction:column;gap:6px}
+.seo-fz-seo-meta-hdr{display:flex;align-items:center;justify-content:space-between}
+.seo-fz-seo-meta-lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#475569}
+.seo-fz-seo-meta-badge{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+.seo-fz-seo-meta-badge--ok{background:rgba(124,255,178,0.12);color:#7CFFB2;border:1px solid rgba(124,255,178,0.25)}
+.seo-fz-seo-meta-badge--warn{background:rgba(252,211,77,0.1);color:#FCD34D;border:1px solid rgba(252,211,77,0.2)}
+.seo-fz-seo-meta-badge--err{background:rgba(239,68,68,0.1);color:#F87171;border:1px solid rgba(239,68,68,0.2)}
+.seo-fz-seo-meta-val{background:#14141B;border:1px solid rgba(120,120,255,0.1);border-radius:8px;padding:10px 12px;font-size:13px;color:#FFFFFF;line-height:1.5}
+.seo-fz-seo-meta-val--slug{font-family:monospace;font-size:12px;color:#6EE7FF}
+.seo-fz-seo-cl-section{background:#1B1B24;border:1px solid rgba(120,120,255,0.12);border-radius:14px;padding:20px}
+.seo-fz-seo-cl-lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#FCD34D;margin:0 0 16px}
+.seo-fz-seo-cl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px}
+.seo-fz-seo-cl-card{background:#14141B;border-radius:10px;padding:12px 14px;border:1px solid transparent}
+.seo-fz-seo-cl-card--ok{border-color:rgba(124,255,178,0.15)}
+.seo-fz-seo-cl-card--warn{border-color:rgba(252,211,77,0.15)}
+.seo-fz-seo-cl-card--err{border-color:rgba(239,68,68,0.15)}
+.seo-fz-seo-cl-badge{font-size:10px;font-weight:700;letter-spacing:.05em;margin:0 0 6px}
+.seo-fz-seo-cl-badge--ok{color:#7CFFB2}
+.seo-fz-seo-cl-badge--warn{color:#FCD34D}
+.seo-fz-seo-cl-badge--err{color:#F87171}
+.seo-fz-seo-cl-text{font-size:11px;color:#94A3B8;line-height:1.4;margin:0}
+.seo-fz-seo-img-section{background:#1B1B24;border:1px solid rgba(120,120,255,0.12);border-radius:14px;padding:20px}
+.seo-fz-seo-img-lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#FCD34D;margin:0 0 12px}
+.seo-fz-seo-img-note{margin:0 0 16px;font-size:12px;color:#475569;font-style:italic}
+.seo-fz-seo-no-imgs{font-size:13px;color:#475569;font-style:italic;margin:0}
+.seo-fz-seo-img-row{border:1px solid rgba(120,120,255,0.1);border-radius:10px;padding:12px;margin:0 0 10px;background:#14141B}
+.seo-fz-seo-img-src{margin:0 0 10px}.seo-fz-seo-img-src code{font-size:11px;color:#9B8CFF;word-break:break-all}
+.seo-fz-seo-img-fields{display:grid;grid-template-columns:100px 1fr;gap:4px 10px;font-size:12px}
+.seo-fz-seo-img-field-lbl{font-weight:700;color:#6EE7FF;text-transform:uppercase;font-size:10px;letter-spacing:.06em}
+.seo-fz-seo-img-val{color:#FFFFFF;line-height:1.5}
 .seo-fz-seo-img-val--empty{color:#4B5563;font-style:italic}
-.seo-fz-seo-img-val--suggested{color:#6EE7FF;font-weight:500}
-@media(max-width:640px){.seo-fz-seo-meta-grid{grid-template-columns:1fr}.seo-fz-seo-og-row{flex-wrap:wrap}.seo-fz-seo-og-row code{flex:none}}
+.seo-fz-seo-img-val--sug{color:#6EE7FF;font-weight:500}
+@media(max-width:768px){.seo-fz-tabs{flex-wrap:wrap}.seo-fz-tab{flex:1 1 50%}.seo-fz-asset-card--wide{grid-column:span 1}.seo-fz-cj-grid{grid-template-columns:1fr}.seo-fz-el{grid-template-columns:1fr}.seo-fz-seo-top{grid-template-columns:1fr}.seo-fz-seo-cl-grid{grid-template-columns:repeat(2,1fr)}}
 </style>`;
 
 
@@ -489,10 +501,10 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
     <div class="seo-fz-header-line"></div>
   </div>
   <nav class="seo-fz-tabs" role="tablist">
-    <button class="seo-fz-tab seo-fz-tab--active" role="tab" aria-selected="true" onclick="${tabJs(uid + '-assets')}"><span class="seo-fz-tab-num">01</span><span class="seo-fz-tab-main">${L.assets}</span><span class="seo-fz-tab-sub">${L.assetsTag}</span></button>
-    <button class="seo-fz-tab" role="tab" aria-selected="false" onclick="${tabJs(uid + '-cj')}"><span class="seo-fz-tab-num">02</span><span class="seo-fz-tab-main">${L.customerJourney}</span><span class="seo-fz-tab-sub">${L.customerJourneyTag}</span></button>
-    <button class="seo-fz-tab" role="tab" aria-selected="false" onclick="${tabJs(uid + '-el')}"><span class="seo-fz-tab-num">03</span><span class="seo-fz-tab-main">${L.editorialLogic}</span><span class="seo-fz-tab-sub">${L.editorialLogicTag}</span></button>
-    <button class="seo-fz-tab" role="tab" aria-selected="false" onclick="${tabJs(uid + '-seo')}"><span class="seo-fz-tab-num">04</span><span class="seo-fz-tab-main">${L.seoOptimization}</span><span class="seo-fz-tab-sub">${L.seoOptimizationTag}</span></button>
+    <button class="seo-fz-tab seo-fz-tab--active" role="tab" aria-selected="true" onclick="${tabJs(uid + '-assets')}"><span class="seo-fz-tab-icon">01</span><span class="seo-fz-tab-labels"><span class="seo-fz-tab-main">${L.assets}</span><span class="seo-fz-tab-sub">${L.assetsTag}</span></span></button>
+    <button class="seo-fz-tab" role="tab" aria-selected="false" onclick="${tabJs(uid + '-cj')}"><span class="seo-fz-tab-icon">02</span><span class="seo-fz-tab-labels"><span class="seo-fz-tab-main">${L.customerJourney}</span><span class="seo-fz-tab-sub">${L.customerJourneyTag}</span></span></button>
+    <button class="seo-fz-tab" role="tab" aria-selected="false" onclick="${tabJs(uid + '-el')}"><span class="seo-fz-tab-icon">03</span><span class="seo-fz-tab-labels"><span class="seo-fz-tab-main">${L.editorialLogic}</span><span class="seo-fz-tab-sub">${L.editorialLogicTag}</span></span></button>
+    <button class="seo-fz-tab" role="tab" aria-selected="false" onclick="${tabJs(uid + '-seo')}"><span class="seo-fz-tab-icon">04</span><span class="seo-fz-tab-labels"><span class="seo-fz-tab-main">${L.seoOptimization}</span><span class="seo-fz-tab-sub">${L.seoOptimizationTag}</span></span></button>
   </nav>
   <div class="seo-fz-tab-sep" aria-hidden="true"></div>
   <div class="seo-fz-panels">
