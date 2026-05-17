@@ -55,6 +55,7 @@ function footerZoneLabels(language: string) {
     checkFaq: "FAQ presente", checkCta: "CTA presente", checkSlug: "Slug definido",
     checkWordCount: "Contagem de palavras", ogImageNote: "Gerenciada pelo image skill",
     sectionTitle: "BRIEFING & ANALYSIS", assetsTag: "DADOS DO BRIEFING", customerJourneyTag: "JORNADA", editorialLogicTag: "POR QUÊ & COMO", seoOptimizationTag: "META + CHECKLIST",
+    expandMore: "Ver mais ▼", expandLess: "Ver menos ▲",
   };
   if (lang === "en" || lang === "en-us") return {
     assets: "Assets", customerJourney: "Customer Journey", editorialLogic: "Editorial Logic",
@@ -78,6 +79,7 @@ function footerZoneLabels(language: string) {
     checkFaq: "FAQ present", checkCta: "CTA present", checkSlug: "Slug defined",
     checkWordCount: "Word count", ogImageNote: "Managed by image skill",
     sectionTitle: "BRIEFING & ANALYSIS", assetsTag: "BRIEFING DATA", customerJourneyTag: "READER PATH", editorialLogicTag: "WHY & HOW", seoOptimizationTag: "META + CHECKLIST",
+    expandMore: "Read more ▼", expandLess: "Read less ▲",
   };
   return {
     assets: "Assets", customerJourney: "Customer Journey", editorialLogic: "Lógica del contenido",
@@ -101,6 +103,7 @@ function footerZoneLabels(language: string) {
     checkFaq: "FAQ presente", checkCta: "CTA presente", checkSlug: "Slug definido",
     checkWordCount: "Conteo de palabras", ogImageNote: "Gestionada por image skill",
     sectionTitle: "BRIEFING & ANALYSIS", assetsTag: "DATOS BRIEFING", customerJourneyTag: "RUTA DEL LECTOR", editorialLogicTag: "POR QUÉ & CÓMO", seoOptimizationTag: "META + CHECKLIST",
+    expandMore: "Ver más ▼", expandLess: "Ver menos ▲",
   };
 }
 
@@ -225,18 +228,25 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
     const icon = esc(String(s.icon_label || "◆"));
     const stageNum = String(s.number || i + 1);
     const stageName = esc(String(s.name || ""));
+    const stageId = uid + "-stage-" + stageNum;
+    const expandMore = String((L as J).expandMore || "Ver más ▼");
+    const expandLess = String((L as J).expandLess || "Ver menos ▲");
     const userStateHtml = s.user_state ? '<div class="seo-fz-cj-field"><span class="seo-fz-cj-field-label">Estado del usuario</span><p>' + esc(String(s.user_state)) + "</p></div>" : "";
-    const userNeedHtml = '<div class="seo-fz-cj-field"><span class="seo-fz-cj-field-label">' + L.userNeed + "</span><p>" + esc(String(s.user_need || "")) + "</p></div>";
     const contentResponseHtml = '<div class="seo-fz-cj-field"><span class="seo-fz-cj-field-label">' + L.contentResponse + "</span><p>" + esc(String(s.content_response || "")) + "</p></div>";
     const refHtml = s.section_reference ? '<div class="seo-fz-cj-ref">→ ' + esc(String(s.section_reference)) + "</div>" : "";
     const arrowHtml = i < stages.length - 1 ? '<div class="seo-fz-cj-arrow" aria-hidden="true">→</div>' : "";
+    const toggleJs = "var exp=document.getElementById('" + stageId + "-exp');var open=exp.classList.toggle('seo-fz-cj-expandable--open');this.textContent=open?'" + expandLess + "':'" + expandMore + "';";
     return '<div class="seo-fz-cj-stage">' +
       '<div class="seo-fz-cj-stage-header">' +
       '<span class="seo-fz-cj-icon">' + icon + "</span>" +
       '<span class="seo-fz-cj-stage-num">' + L.stage + " " + stageNum + "</span>" +
       "</div>" +
       '<div class="seo-fz-cj-stage-name">' + stageName + "</div>" +
-      userStateHtml + userNeedHtml + contentResponseHtml + refHtml +
+      '<div class="seo-fz-cj-field"><span class="seo-fz-cj-field-label">' + L.userNeed + '</span><p class="seo-fz-cj-field-summary">' + esc(String(s.user_need || "")) + "</p></div>" +
+      '<div id="' + stageId + '-exp" class="seo-fz-cj-expandable">' +
+      userStateHtml + contentResponseHtml + refHtml +
+      "</div>" +
+      '<button class="seo-fz-cj-toggle" onclick="' + toggleJs + '">' + expandMore + "</button>" +
       "</div>" + arrowHtml;
   }).join("");
   const fallbackHtml = '<div class="seo-fz-cj-fallback"><p><em>Customer journey generado con datos del brief.</em></p><p><strong>Keyword:</strong> ' + esc(c.keyword || "—") + "</p><p><strong>" + L.intent + ":</strong> " + esc(String(c.intent || "—")) + "</p><p><strong>" + L.audience + ":</strong> " + esc(String(c.audience || "—")) + "</p></div>";
@@ -410,9 +420,10 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 .seo-fz-kw-main{font-size:18px;font-weight:800;color:#FFFFFF;text-shadow:0 0 20px rgba(155,140,255,0.3)}
 .seo-fz-asset-tags{display:flex;flex-wrap:wrap;gap:8px}
 .seo-fz-tag{background:rgba(108,92,255,0.12);border:1px solid rgba(108,92,255,0.35);color:#C6BEFF;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500}
-.seo-fz-asset-ol,.seo-fz-asset-ul{margin:8px 0 0;padding:0 0 0 18px;font-size:13px;color:#CBD5E1;line-height:1.8}
+.seo-fz-asset-ol,.seo-fz-asset-ul{margin:8px 0 0;padding:0 0 0 18px;font-size:13px;color:rgba(218,214,235,0.84);line-height:1.8}
+.seo-fz-wrapper .seo-fz-asset-ol li,.seo-fz-wrapper .seo-fz-asset-ul li{color:rgba(218,214,235,0.84)}
 .seo-fz-cj{}.seo-fz-cj-stages{display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding:8px 0 24px;-webkit-overflow-scrolling:touch}
-.seo-fz-cj-stage{flex:0 0 220px;background:#1B1B24;border:1px solid rgba(120,120,255,0.15);border-radius:14px;padding:18px 16px;box-shadow:0 4px 24px rgba(0,0,0,0.4)}
+.seo-fz-cj-stage{flex:0 0 220px;background:rgba(40,39,66,0.9);border:1px solid rgba(120,120,255,0.2);border-radius:14px;padding:18px 16px;box-shadow:0 4px 16px rgba(0,0,0,0.25)}
 .seo-fz-cj-arrow{flex:0 0 auto;align-self:center;font-size:20px;color:#6C5CFF;padding:0 8px;font-weight:300;text-shadow:0 0 8px rgba(108,92,255,0.5)}
 .seo-fz-cj-stage-header{display:flex;align-items:center;gap:8px;margin:0 0 8px}
 .seo-fz-cj-icon{font-size:20px;line-height:1}
@@ -420,8 +431,13 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 .seo-fz-cj-stage-name{font-size:15px;font-weight:700;color:#FFFFFF;margin:0 0 12px;line-height:1.3}
 .seo-fz-cj-field{margin:0 0 10px}
 .seo-fz-cj-field-label{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7CFFB2;margin:0 0 4px;text-shadow:0 0 8px rgba(124,255,178,0.2)}
-.seo-fz-cj-field p{margin:0;font-size:12px;color:#CBD5E1;line-height:1.6}
+.seo-fz-cj-field p{margin:0;font-size:12px;color:rgba(218,214,235,0.84);line-height:1.6}
 .seo-fz-cj-ref{margin-top:10px;font-size:11px;color:#9B8CFF;font-style:italic;border-top:1px solid rgba(120,120,255,0.15);padding-top:8px}
+.seo-fz-cj-field-summary{margin:0;font-size:12px;color:rgba(218,214,235,0.84);line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.seo-fz-cj-expandable{max-height:0;overflow:hidden;transition:max-height .4s ease,opacity .3s ease;opacity:0}
+.seo-fz-cj-expandable--open{max-height:800px;opacity:1}
+.seo-fz-cj-toggle{display:block;width:100%;margin-top:10px;padding:5px 10px;background:rgba(108,92,255,0.1);border:1px solid rgba(108,92,255,0.2);color:#9B8CFF;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:8px;cursor:pointer;transition:all .2s;text-align:center}
+.seo-fz-cj-toggle:hover{background:rgba(108,92,255,0.22);border-color:rgba(108,92,255,0.4);color:#C6BEFF}
 .seo-fz-cj-insights{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin:24px 0 0}
 .seo-fz-cj-insight{background:#1B1B24;border:1px solid rgba(108,92,255,0.25);border-radius:14px;padding:16px;box-shadow:0 0 12px rgba(108,92,255,0.08)}
 .seo-fz-insight-title{margin:0 0 8px;font-size:13px;font-weight:700;color:#9B8CFF;text-shadow:0 0 8px rgba(155,140,255,0.3)}
