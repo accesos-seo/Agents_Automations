@@ -179,3 +179,32 @@ Detalle completo en el [informe de análisis](../../handovers/2026-05-16-analisi
 | 2026-05-16 | D-006 — Orquestador v45 desplegado en Light_House: 4ª pestaña "Optimización SEO" con Meta & OG (char-count badges), Checklist SEO (10 señales semáforo), Imágenes alt tags. Sin AI adicional — 100% datos del brief + HTML. |
 | 2026-05-16 | D-007 — Audio trigger SQL ahora espera `processed_at IS NOT NULL`. Resuelve audios stale generados de partial saves intermedios. |
 | 2026-05-16 | D-008 — Orquestador v4.6 (deploy 51) arquitectura save-early: artículo persiste antes de IA opcional (EEAT/CJ/EL paralelos). Fix wall-time death en EEAT/final_repair. Validado E2E con Doug Construction: 4 pestañas + audio en-US ready (14m 46s). |
+
+---
+
+## 9. Decisiones de modelos por agente
+
+> Última actualización: 2026-05-17 — Fuente de verdad: `ops-control-plane/automation_projects/02-seo-content-generation/`
+>
+> | Agente | Modelo | Qué hace |
+> |---|---|---|
+> | `seo-expert` | Gemini 3.1 Pro Preview (OpenRouter) | Arquitectura H1/H2, keywords, meta, slug |
+> | `content-writer` | GPT-5.5 (OpenRouter) | Escribe HTML completo con brand context |
+> | `optimizer` | DeepSeek V4 Pro (OpenRouter) | Mejoras SEO puntuales, calcula seo_score |
+> | `humanizer` | GPT-5.5 (OpenRouter) | Elimina patrones de escritura IA |
+> | `eeat-validator` | Gemini 3.1 Pro Preview (OpenRouter) | Valida E-E-A-T, puntúa 0–40 |
+> | `brand-context-loader` | — (sin modelo) | Carga brand-voice.md y auditoria-referencia.md |
+>
+> ### 9.1 Secrets en Supabase (Light_House)
+>
+> | Agente | Secret name |
+> |---|---|
+> | `seo-expert` | `OPENROUTER_MODEL_SEO_EXPERT` |
+> | `content-writer` | `OPENROUTER_MODEL_CONTENT_WRITER` |
+> | `optimizer` | `OPENROUTER_MODEL_OPTIMIZER` |
+> | `humanizer` | `OPENROUTER_MODEL_HUMANIZER` |
+> | `eeat-validator` | `OPENROUTER_MODEL_EEAT_VALIDATOR` |
+>
+> > **Nota:** `brand-context-loader` no tiene modelo asignado (`model: null`). Es TypeScript puro que carga archivos desde GitHub. No requiere secret de OpenRouter.
+> >
+> > > **Proveedor único:** Todos los modelos con IA van por **OpenRouter** — no hay claves directas a OpenAI, Google o DeepSeek.
