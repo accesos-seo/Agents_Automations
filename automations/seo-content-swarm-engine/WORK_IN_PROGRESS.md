@@ -17,7 +17,7 @@
 
 | Sesión | Área | Owner | Inicio | Cierre | Resultado |
 |---|---|---|---|---|---|
-| S-008 | A. Audio (TTS Gemini) | Claude-code-web | 2026-05-17 | 2026-05-17 | ✅ Análisis completo + patch D-009: migración a `google/gemini-3.1-flash-tts-preview` via OpenRouter. Patches 05 (prompt) y 06 (implementación completa) listos en propuestas-ops-control-plane. |
+| S-008 | A. Audio (TTS Gemini) | Claude-code-web | 2026-05-17 | 2026-05-17 | ✅ D-009 implementado y desplegado en producción. `seo-content-audio-skill` v38 activo en Light_House. 6 voice profiles Gemini TTS configurados (es-MX/pt-BR/en-US × listen_article/podcast_summary). Pendiente: test manual con dry_run=true desde entorno con acceso a Supabase. |
 | S-007 | C. Writer (zona post-FAQ) | Claude-code-web | 2026-05-16 | 2026-05-16 | ✅ Footer zone implementada y desplegada: orquestador v44 activo en Light_House. Tabs Assets / Customer Journey / Lógica del contenido. Env var OPENROUTER_MODEL_FOOTER_ZONE pendiente de configurar. |
 | S-006 | C. Writer (nuevo) | Claude-chat-customer-journey | 2026-05-16 | — | ⏸ Transferido a S-007 (solo registró sesión, no implementó) |
 | S-001 | A. Audio (D-001) | Claude vía MCP | 2026-05-16 14:20 | 2026-05-16 14:30 | ✅ Deploy v13 limpieza HTML, prueba end-to-end OK |
