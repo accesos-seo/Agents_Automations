@@ -169,6 +169,12 @@ Return ONLY valid JSON, no markdown:
 function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: string, brand: string, language: string): string {
   const L = footerZoneLabels(language);
   const uid = "fz" + Date.now().toString(36);
+  const tabJs = (panelId: string) =>
+    `var w=document.getElementById('${uid}-wrapper');` +
+    `w.querySelectorAll('.seo-fz-tab').forEach(function(t){t.classList.remove('seo-fz-tab--active')});` +
+    `w.querySelectorAll('.seo-fz-panel').forEach(function(p){p.classList.remove('seo-fz-panel--active')});` +
+    `this.classList.add('seo-fz-tab--active');` +
+    `var pnl=document.getElementById('${panelId}');if(pnl)pnl.classList.add('seo-fz-panel--active');`;
 
   // ── ASSETS TAB ────────────────────────────────────────────────
   const kws = c.secondary.slice(0, 8);
@@ -383,9 +389,9 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 .seo-fz-tabs{display:flex;justify-content:space-between;gap:4px;padding:6px;background:#14141B;border-radius:14px;margin:0 0 8px;border:1px solid rgba(120,120,255,0.12)}
 .seo-fz-tab-sep{height:1px;background:rgba(140,140,255,0.15);margin:0 0 32px}
 .seo-fz-tab{flex:1;padding:12px 16px;border:none;background:transparent;border-radius:10px;cursor:pointer;transition:all .2s;text-align:left;display:flex;flex-direction:column;gap:2px}
-.seo-fz-tab-num{font-size:11px;font-weight:700;letter-spacing:.06em;color:#4B5563;transition:color .2s}
-.seo-fz-tab-main{font-size:13px;font-weight:600;color:#6B7280;transition:color .2s;white-space:nowrap}
-.seo-fz-tab-sub{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#374151;transition:color .2s}
+.seo-fz-tab-num{font-size:11px;font-weight:700;letter-spacing:.06em;color:#7C8FA6;transition:color .2s}
+.seo-fz-tab-main{font-size:13px;font-weight:600;color:#94A3B8;transition:color .2s;white-space:nowrap}
+.seo-fz-tab-sub{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#64748B;transition:color .2s}
 .seo-fz-tab:hover{background:#1B1B24}
 .seo-fz-tab:hover .seo-fz-tab-num{color:#9B8CFF}
 .seo-fz-tab:hover .seo-fz-tab-main{color:#A8B3CF}
@@ -400,11 +406,11 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 .seo-fz-asset-card:hover{background:#222230}
 .seo-fz-asset-card--wide{grid-column:span 2}.seo-fz-asset-card--full{grid-column:1/-1}
 .seo-fz-asset-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6EE7FF;margin:0 0 8px;text-shadow:0 0 8px rgba(110,231,255,0.25)}
-.seo-fz-asset-value{font-size:14px;color:#E2E8F0;line-height:1.6}
+.seo-fz-asset-value{font-size:14px;color:#FFFFFF;line-height:1.6}
 .seo-fz-kw-main{font-size:18px;font-weight:800;color:#FFFFFF;text-shadow:0 0 20px rgba(155,140,255,0.3)}
 .seo-fz-asset-tags{display:flex;flex-wrap:wrap;gap:8px}
 .seo-fz-tag{background:rgba(108,92,255,0.12);border:1px solid rgba(108,92,255,0.35);color:#C6BEFF;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500}
-.seo-fz-asset-ol,.seo-fz-asset-ul{margin:8px 0 0;padding:0 0 0 18px;font-size:13px;color:#A8B3CF;line-height:1.8}
+.seo-fz-asset-ol,.seo-fz-asset-ul{margin:8px 0 0;padding:0 0 0 18px;font-size:13px;color:#CBD5E1;line-height:1.8}
 .seo-fz-cj{}.seo-fz-cj-stages{display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding:8px 0 24px;-webkit-overflow-scrolling:touch}
 .seo-fz-cj-stage{flex:0 0 220px;background:#1B1B24;border:1px solid rgba(120,120,255,0.15);border-radius:14px;padding:18px 16px;box-shadow:0 4px 24px rgba(0,0,0,0.4)}
 .seo-fz-cj-arrow{flex:0 0 auto;align-self:center;font-size:20px;color:#6C5CFF;padding:0 8px;font-weight:300;text-shadow:0 0 8px rgba(108,92,255,0.5)}
@@ -413,8 +419,8 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 .seo-fz-cj-stage-num{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9B8CFF}
 .seo-fz-cj-stage-name{font-size:15px;font-weight:700;color:#FFFFFF;margin:0 0 12px;line-height:1.3}
 .seo-fz-cj-field{margin:0 0 10px}
-.seo-fz-cj-field-label{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6EE7FF;margin:0 0 4px}
-.seo-fz-cj-field p{margin:0;font-size:12px;color:#A8B3CF;line-height:1.6}
+.seo-fz-cj-field-label{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7CFFB2;margin:0 0 4px;text-shadow:0 0 8px rgba(124,255,178,0.2)}
+.seo-fz-cj-field p{margin:0;font-size:12px;color:#CBD5E1;line-height:1.6}
 .seo-fz-cj-ref{margin-top:10px;font-size:11px;color:#9B8CFF;font-style:italic;border-top:1px solid rgba(120,120,255,0.15);padding-top:8px}
 .seo-fz-cj-insights{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin:24px 0 0}
 .seo-fz-cj-insight{background:#1B1B24;border:1px solid rgba(108,92,255,0.25);border-radius:14px;padding:16px;box-shadow:0 0 12px rgba(108,92,255,0.08)}
@@ -424,10 +430,10 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 .seo-fz-el{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
 .seo-fz-el-block{background:#1B1B24;border:1px solid rgba(120,120,255,0.12);border-radius:14px;padding:18px}
 .seo-fz-el-block--highlight{background:rgba(108,92,255,0.08);border-color:rgba(108,92,255,0.35);box-shadow:0 0 12px rgba(108,92,255,0.12)}
-.seo-fz-el-title{margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7CFFB2;text-shadow:0 0 8px rgba(124,255,178,0.2)}
-.seo-fz-el-block p{margin:0 0 8px;font-size:13px;color:#A8B3CF;line-height:1.7}
+.seo-fz-el-title{margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#C084FC;text-shadow:0 0 8px rgba(192,132,252,0.25)}
+.seo-fz-el-block p{margin:0 0 8px;font-size:13px;color:#CBD5E1;line-height:1.7}
 .seo-fz-el-block p:last-child{margin-bottom:0}
-.seo-fz-el-list{margin:0;padding:0 0 0 16px;font-size:13px;color:#A8B3CF;line-height:1.8}
+.seo-fz-el-list{margin:0;padding:0 0 0 16px;font-size:13px;color:#CBD5E1;line-height:1.8}
 @media(max-width:640px){
   .seo-fz-tabs{flex-direction:column}
   .seo-fz-asset-card--wide{grid-column:span 1}
@@ -437,13 +443,13 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 }
 .seo-fz-seo{display:flex;flex-direction:column;gap:24px}
 .seo-fz-seo-section{background:#1B1B24;border:1px solid rgba(120,120,255,0.12);border-radius:14px;padding:20px}
-.seo-fz-seo-section-title{margin:0 0 16px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6EE7FF;text-shadow:0 0 8px rgba(110,231,255,0.25)}
+.seo-fz-seo-section-title{margin:0 0 16px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#FCD34D;text-shadow:0 0 8px rgba(252,211,77,0.25)}
 .seo-fz-seo-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .seo-fz-seo-meta-field{background:#14141B;border:1px solid rgba(120,120,255,0.12);border-radius:10px;padding:12px 14px}
 .seo-fz-seo-meta-field--full{grid-column:1/-1}
 .seo-fz-seo-meta-header{display:flex;align-items:center;justify-content:space-between;margin:0 0 6px}
 .seo-fz-seo-meta-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9B8CFF}
-.seo-fz-seo-meta-value{font-size:13px;color:#E2E8F0;line-height:1.6}
+.seo-fz-seo-meta-value{font-size:13px;color:#FFFFFF;line-height:1.6}
 .seo-fz-seo-meta-value--slug{font-family:monospace;font-size:12px;color:#6EE7FF}
 .seo-fz-seo-badge{padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700}
 .seo-fz-seo-badge--ok{background:rgba(124,255,178,0.15);color:#7CFFB2;border:1px solid rgba(124,255,178,0.3)}
@@ -473,25 +479,6 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 @media(max-width:640px){.seo-fz-seo-meta-grid{grid-template-columns:1fr}.seo-fz-seo-og-row{flex-wrap:wrap}.seo-fz-seo-og-row code{flex:none}}
 </style>`;
 
-  // ── SCRIPT ─────────────────────────────────────────────────────
-  const script = `<script data-fz="1">
-(function(){
-  var wrapper=document.getElementById('${uid}-wrapper');
-  if(!wrapper)return;
-  var tabs=wrapper.querySelectorAll('.seo-fz-tab');
-  var panels=wrapper.querySelectorAll('.seo-fz-panel');
-  tabs.forEach(function(tab){
-    tab.addEventListener('click',function(){
-      var target=tab.getAttribute('data-fz-target');
-      tabs.forEach(function(t){t.classList.remove('seo-fz-tab--active');});
-      panels.forEach(function(p){p.classList.remove('seo-fz-panel--active');});
-      tab.classList.add('seo-fz-tab--active');
-      var panel=document.getElementById(target);
-      if(panel)panel.classList.add('seo-fz-panel--active');
-    });
-  });
-})();
-<\/script>`;
 
   return `${styles}
 <div class="seo-fz-sep" aria-hidden="true"><div class="seo-fz-sep-line"></div></div>
@@ -502,10 +489,10 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
     <div class="seo-fz-header-line"></div>
   </div>
   <nav class="seo-fz-tabs" role="tablist">
-    <button class="seo-fz-tab seo-fz-tab--active" role="tab" data-fz-target="${uid}-assets" aria-selected="true"><span class="seo-fz-tab-num">01</span><span class="seo-fz-tab-main">${L.assets}</span><span class="seo-fz-tab-sub">${L.assetsTag}</span></button>
-    <button class="seo-fz-tab" role="tab" data-fz-target="${uid}-cj" aria-selected="false"><span class="seo-fz-tab-num">02</span><span class="seo-fz-tab-main">${L.customerJourney}</span><span class="seo-fz-tab-sub">${L.customerJourneyTag}</span></button>
-    <button class="seo-fz-tab" role="tab" data-fz-target="${uid}-el" aria-selected="false"><span class="seo-fz-tab-num">03</span><span class="seo-fz-tab-main">${L.editorialLogic}</span><span class="seo-fz-tab-sub">${L.editorialLogicTag}</span></button>
-    <button class="seo-fz-tab" role="tab" data-fz-target="${uid}-seo" aria-selected="false"><span class="seo-fz-tab-num">04</span><span class="seo-fz-tab-main">${L.seoOptimization}</span><span class="seo-fz-tab-sub">${L.seoOptimizationTag}</span></button>
+    <button class="seo-fz-tab seo-fz-tab--active" role="tab" aria-selected="true" onclick="${tabJs(uid + '-assets')}"><span class="seo-fz-tab-num">01</span><span class="seo-fz-tab-main">${L.assets}</span><span class="seo-fz-tab-sub">${L.assetsTag}</span></button>
+    <button class="seo-fz-tab" role="tab" aria-selected="false" onclick="${tabJs(uid + '-cj')}"><span class="seo-fz-tab-num">02</span><span class="seo-fz-tab-main">${L.customerJourney}</span><span class="seo-fz-tab-sub">${L.customerJourneyTag}</span></button>
+    <button class="seo-fz-tab" role="tab" aria-selected="false" onclick="${tabJs(uid + '-el')}"><span class="seo-fz-tab-num">03</span><span class="seo-fz-tab-main">${L.editorialLogic}</span><span class="seo-fz-tab-sub">${L.editorialLogicTag}</span></button>
+    <button class="seo-fz-tab" role="tab" aria-selected="false" onclick="${tabJs(uid + '-seo')}"><span class="seo-fz-tab-num">04</span><span class="seo-fz-tab-main">${L.seoOptimization}</span><span class="seo-fz-tab-sub">${L.seoOptimizationTag}</span></button>
   </nav>
   <div class="seo-fz-tab-sep" aria-hidden="true"></div>
   <div class="seo-fz-panels">
@@ -515,7 +502,7 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
     <div id="${uid}-seo" class="seo-fz-panel" role="tabpanel">${seoHtml}</div>
   </div>
 </section>
-${script}`;
+`;
 }
 
 serve(async (req) => {
