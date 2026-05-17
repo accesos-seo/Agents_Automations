@@ -10,6 +10,7 @@
 
 | Sesión | Área | Owner | Inicio | Tarea | Estado |
 |---|---|---|---|---|---|
+| S-008 | A. Audio (TTS prompt) | Claude-code-web | 2026-05-17 | Crear system prompt de contención para audio-skill (v15): narración literal, sin improvisación, con seed determinista. Patch en propuestas-ops-control-plane/05. | en_curso |
 
 ---
 
