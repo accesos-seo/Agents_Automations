@@ -7,7 +7,7 @@ type Project = { id:string; nombremarca?:string|null; idioma_objetivo?:string|nu
 type Section = { key:string; kind:"intro"|"h2"|"faq"|"cta"|"expansion"; heading:string; minWords:number; payload?:unknown };
 type Contract = { source:string; extensionRaw:string|null; extensionSource?:string|null; extensionComplianceRule?:string; min:number|null; max:number|null; h1:string|null; slug:string|null; metaTitle:string|null; metaDescription:string|null; keyword:string|null; secondary:string[]; intent:string|null; audience:string|null; angle:string|null; h2:string[]; h2Details:J[]; faq:string[]; cta:string|null; research:string|null; facts:string[]; sections:Section[] };
 type Val = { passed:boolean; wordCount:number; issues:string[]; missingH1:boolean; missingH2:string[]; missingFaq:string[]; missingCta:boolean; missingKeyword:boolean; missingFacts:string[]; extensionRaw:string|null; targetWordMin:number|null; targetWordMax:number|null };
-const VERSION = "4.6";
+const VERSION = "4.7-neon";
 const CORS = { "Access-Control-Allow-Origin":"*", "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods":"POST, OPTIONS" };
 
 function faqHeading(language:string):string{
@@ -48,6 +48,7 @@ function footerZoneLabels(language: string) {
     metaOg: "Meta & Open Graph", seoChecklist: "Checklist SEO", seoImages: "Imagens — Alt tags",
     featuredImageNote: "A imagem destacada (og_image_url) é gerenciada pelo image skill.",
     noImagesFound: "Nenhuma imagem encontrada no HTML do artigo.",
+    expandMore: "Ver mais ▼", expandLess: "Ver menos ▲",
     altCurrent: "Alt atual", altSuggested: "Alt sugerido", titleAttr: "Title", chars: "chars",
     checkH1Present: "H1 presente no artigo", checkKwInH1: "Keyword no H1",
     checkKwInMeta: "Keyword no meta title", checkKwInDesc: "Keyword na meta description",
@@ -71,6 +72,7 @@ function footerZoneLabels(language: string) {
     metaOg: "Meta & Open Graph", seoChecklist: "SEO Checklist", seoImages: "Images — Alt tags",
     featuredImageNote: "The featured image (og_image_url) is managed by the image skill.",
     noImagesFound: "No images found in the article HTML.",
+    expandMore: "Read more ▼", expandLess: "Read less ▲",
     altCurrent: "Current alt", altSuggested: "Suggested alt", titleAttr: "Title", chars: "chars",
     checkH1Present: "H1 present in article", checkKwInH1: "Keyword in H1",
     checkKwInMeta: "Keyword in meta title", checkKwInDesc: "Keyword in meta description",
@@ -94,6 +96,7 @@ function footerZoneLabels(language: string) {
     metaOg: "Meta & Open Graph", seoChecklist: "Checklist SEO", seoImages: "Imágenes — Alt tags",
     featuredImageNote: "La imagen destacada (og_image_url) es gestionada por el image skill.",
     noImagesFound: "No se encontraron imágenes en el HTML del artículo.",
+    expandMore: "Ver más ▼", expandLess: "Ver menos ▲",
     altCurrent: "Alt actual", altSuggested: "Alt sugerido", titleAttr: "Title", chars: "chars",
     checkH1Present: "H1 presente en el artículo", checkKwInH1: "Keyword principal en H1",
     checkKwInMeta: "Keyword en meta title", checkKwInDesc: "Keyword en meta description",
@@ -221,29 +224,42 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
 
   // ── CUSTOMER JOURNEY TAB ──────────────────────────────────────
   const stages: J[] = Array.isArray(cj.stages) ? cj.stages : [];
-  const stagesInnerHtml = stages.map(function(s, i) {
-    const icon = esc(String(s.icon_label || "◆"));
-    const stageNum = String(s.number || i + 1);
-    const stageName = esc(String(s.name || ""));
-    const userStateHtml = s.user_state ? '<div class="seo-fz-cj-field"><span class="seo-fz-cj-field-label">Estado del usuario</span><p>' + esc(String(s.user_state)) + "</p></div>" : "";
-    const userNeedHtml = '<div class="seo-fz-cj-field"><span class="seo-fz-cj-field-label">' + L.userNeed + "</span><p>" + esc(String(s.user_need || "")) + "</p></div>";
-    const contentResponseHtml = '<div class="seo-fz-cj-field"><span class="seo-fz-cj-field-label">' + L.contentResponse + "</span><p>" + esc(String(s.content_response || "")) + "</p></div>";
-    const refHtml = s.section_reference ? '<div class="seo-fz-cj-ref">→ ' + esc(String(s.section_reference)) + "</div>" : "";
-    const arrowHtml = i < stages.length - 1 ? '<div class="seo-fz-cj-arrow" aria-hidden="true">→</div>' : "";
-    return '<div class="seo-fz-cj-stage">' +
-      '<div class="seo-fz-cj-stage-header">' +
-      '<span class="seo-fz-cj-icon">' + icon + "</span>" +
-      '<span class="seo-fz-cj-stage-num">' + L.stage + " " + stageNum + "</span>" +
-      "</div>" +
-      '<div class="seo-fz-cj-stage-name">' + stageName + "</div>" +
-      userStateHtml + userNeedHtml + contentResponseHtml + refHtml +
-      "</div>" + arrowHtml;
+  const cjGradId = uid + "-cjg";
+  const svgCount = Math.min(stages.length, 6);
+  const svgPositions: Array<{x:number;y:number}> = [];
+  for (let i = 0; i < svgCount; i++) {
+    svgPositions.push({ x: svgCount === 1 ? 500 : Math.round(100 + i * 800 / (svgCount - 1)), y: i % 2 === 0 ? 72 : 28 });
+  }
+  let svgPath = svgPositions.length > 0 ? "M " + svgPositions[0].x + "," + svgPositions[0].y : "";
+  for (let i = 1; i < svgPositions.length; i++) {
+    const prev = svgPositions[i - 1], curr = svgPositions[i], mx = Math.round((prev.x + curr.x) / 2);
+    svgPath += " C " + mx + "," + prev.y + " " + mx + "," + curr.y + " " + curr.x + "," + curr.y;
+  }
+  const svgNodes = svgPositions.map(function(p, i) {
+    return '<circle cx="' + p.x + '" cy="' + p.y + '" r="18" fill="#14141B" stroke="url(#' + cjGradId + ')" stroke-width="1.5"/>' +
+      '<text x="' + p.x + '" y="' + (p.y + 5) + '" text-anchor="middle" font-size="13" font-weight="700" fill="#9B8CFF" font-family="system-ui,sans-serif">' + (i + 1) + "</text>";
   }).join("");
-  const fallbackHtml = '<div class="seo-fz-cj-fallback"><p><em>Customer journey generado con datos del brief.</em></p><p><strong>Keyword:</strong> ' + esc(c.keyword || "—") + "</p><p><strong>" + L.intent + ":</strong> " + esc(String(c.intent || "—")) + "</p><p><strong>" + L.audience + ":</strong> " + esc(String(c.audience || "—")) + "</p></div>";
-  const stagesHtml = stages.length
-    ? '<div class="seo-fz-cj-stages">' + stagesInnerHtml + "</div>"
-    : fallbackHtml;
-
+  const cjFlowSvg = svgCount > 0 ? '<div class="seo-fz-cj-flow"><span class="seo-fz-cj-flow-label">READER FLOW MAP</span>' +
+    '<svg viewBox="0 0 1000 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">' +
+    '<defs><linearGradient id="' + cjGradId + '" x1="0%" y1="0%" x2="100%" y2="0%">' +
+    '<stop offset="0%" stop-color="#6C5CFF"/><stop offset="100%" stop-color="#6EE7FF"/></linearGradient></defs>' +
+    (svgPath ? '<path d="' + svgPath + '" stroke="url(#' + cjGradId + ')" stroke-width="1.5" fill="none" opacity="0.5"/>' : "") +
+    svgNodes + "</svg></div>" : "";
+  const fallbackHtml = '<div class="seo-fz-cj-fallback"><p><strong>Keyword:</strong> ' + esc(c.keyword || "—") + "</p><p><strong>" + L.intent + ":</strong> " + esc(String(c.intent || "—")) + "</p><p><strong>" + L.audience + ":</strong> " + esc(String(c.audience || "—")) + "</p></div>";
+  const stagesGridHtml = stages.length ? '<div class="seo-fz-cj-grid">' + stages.map(function(s, i) {
+    const num = String(s.number || i + 1);
+    const name = esc(String(s.name || ""));
+    const expMore = String((L as J).expandMore || "Ver más ▼");
+    const expLess = String((L as J).expandLess || "Ver menos ▲");
+    const cardId = "cj-exp-" + i;
+    const toggleJs = "var e=document.getElementById('" + cardId + "');var o=e.classList.toggle('seo-fz-cj-card-exp--open');this.textContent=o?'" + expLess + "':'" + expMore + "';";
+    const needSummary = s.user_need ? '<div class="seo-fz-cj-card-field"><span class="seo-fz-cj-card-lbl">' + L.userNeed + '</span><p class="seo-fz-cj-card-txt seo-fz-cj-card-summary">' + esc(String(s.user_need)) + "</p></div>" : "";
+    const state = s.user_state ? '<div class="seo-fz-cj-card-field"><span class="seo-fz-cj-card-lbl">Estado</span><p class="seo-fz-cj-card-txt">' + esc(String(s.user_state)) + "</p></div>" : "";
+    const resp = s.content_response ? '<div class="seo-fz-cj-card-field"><span class="seo-fz-cj-card-lbl">' + L.contentResponse + '</span><p class="seo-fz-cj-card-txt">' + esc(String(s.content_response)) + "</p></div>" : "";
+    const ref = s.section_reference ? '<div class="seo-fz-cj-card-ref"><span class="seo-fz-cj-ref-pill">→ ' + esc(String(s.section_reference)) + "</span></div>" : "";
+    const expandable = (state || resp || ref) ? '<div id="' + cardId + '" class="seo-fz-cj-card-exp">' + state + resp + ref + '</div><button class="seo-fz-cj-toggle" onclick="' + toggleJs + '">' + expMore + '</button>' : "";
+    return '<div class="seo-fz-cj-card"><div class="seo-fz-cj-card-hdr"><span class="seo-fz-cj-card-num">' + num + "</span><span class=\"seo-fz-cj-card-name\">" + name + "</span></div>" + needSummary + expandable + "</div>";
+  }).join("") + "</div>" : fallbackHtml;
   const cjInsight = function(title: string, content: string) {
     return '<div class="seo-fz-cj-insight"><h4 class="seo-fz-insight-title">' + title + "</h4><p>" + content + "</p></div>";
   };
@@ -253,7 +269,7 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
     cj.audience_insight ? cjInsight(L.audienceInsight, esc(String(cj.audience_insight))) : "",
   ].filter(Boolean).join("\n");
   const cjInsightsBlock = cjRationale ? '<div class="seo-fz-cj-insights">' + cjRationale + "</div>" : "";
-  const cjHtml = '<div class="seo-fz-cj">' + stagesHtml + cjInsightsBlock + "</div>";
+  const cjHtml = '<div>' + cjFlowSvg + stagesGridHtml + cjInsightsBlock + "</div>";
 
   // ── EDITORIAL LOGIC TAB ───────────────────────────────────────
   const decisions: string[] = Array.isArray(el.key_editorial_decisions) ? el.key_editorial_decisions.map(String) : [];
@@ -278,18 +294,6 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
   const kw = seoNorm(c.keyword || "");
   const mtLen = (c.metaTitle || "").length;
   const mdLen = (c.metaDescription || "").length;
-  const ogTitle = c.metaTitle || c.h1 || "—";
-  const ogDesc = c.metaDescription || "—";
-
-  const charBadge = function(len: number, idealMin: number, idealMax: number) {
-    const cls = len >= idealMin && len <= idealMax ? "ok" : (len >= idealMin - 15 && len <= idealMax + 20 ? "warn" : "err");
-    return '<span class="seo-fz-seo-badge seo-fz-seo-badge--' + cls + '">' + len + " " + L.chars + "</span>";
-  };
-
-  const checkItem = function(state: "ok" | "warn" | "err", label: string) {
-    const icon = state === "ok" ? "✅" : state === "warn" ? "⚠️" : "❌";
-    return '<li class="seo-fz-seo-check seo-fz-seo-check--' + state + '">' + icon + " " + esc(label) + "</li>";
-  };
 
   const kwInH1 = !!kw && seoNorm(c.h1 || "").includes(kw);
   const kwInMeta = !!kw && seoNorm(c.metaTitle || "").includes(kw);
@@ -303,18 +307,58 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
   const wcWarn = !wcOk && wcMin > 0 && val.wordCount >= Math.round(wcMin * 0.88);
   const wcLabel = L.checkWordCount + ": " + val.wordCount + (wcMin ? " / " + wcMin + (wcMax ? "–" + wcMax : "+") : "");
 
-  const checklistHtml = "<ul class=\"seo-fz-seo-checklist\">" +
-    checkItem(!val.missingH1 ? "ok" : "err", L.checkH1Present) +
-    checkItem(kwInH1 ? "ok" : (kw ? "err" : "warn"), L.checkKwInH1) +
-    checkItem(kwInMeta ? "ok" : (kw && c.metaTitle ? "err" : "warn"), L.checkKwInMeta) +
-    checkItem(kwInDesc ? "ok" : (kw && c.metaDescription ? "warn" : "warn"), L.checkKwInDesc) +
-    checkItem(mtState, L.checkMetaTitleLen + " (" + mtLen + " " + L.chars + ")") +
-    checkItem(mdState, L.checkMetaDescLen + " (" + mdLen + " " + L.chars + ")") +
-    checkItem(faqOk ? "ok" : (c.faq.length > 0 ? "warn" : "err"), L.checkFaq + (c.faq.length ? " (" + c.faq.length + ")" : "")) +
-    checkItem(!val.missingCta ? "ok" : "warn", L.checkCta) +
-    checkItem(c.slug ? "ok" : "warn", L.checkSlug) +
-    checkItem(wcOk ? "ok" : (wcWarn ? "warn" : "err"), wcLabel) +
-    "</ul>";
+  // Build check items for score gauge
+  type CheckState = "ok"|"warn"|"err";
+  const checks: Array<{state:CheckState;label:string}> = [
+    { state: (!val.missingH1 ? "ok" : "err"), label: L.checkH1Present },
+    { state: (kwInH1 ? "ok" : (kw ? "err" : "warn")), label: L.checkKwInH1 },
+    { state: (kwInMeta ? "ok" : (kw && c.metaTitle ? "err" : "warn")), label: L.checkKwInMeta },
+    { state: (kwInDesc ? "ok" : "warn"), label: L.checkKwInDesc },
+    { state: mtState, label: L.checkMetaTitleLen + " (" + mtLen + " " + L.chars + ")" },
+    { state: mdState, label: L.checkMetaDescLen + " (" + mdLen + " " + L.chars + ")" },
+    { state: (faqOk ? "ok" : (c.faq.length > 0 ? "warn" : "err")), label: L.checkFaq + (c.faq.length ? " (" + c.faq.length + ")" : "") },
+    { state: (!val.missingCta ? "ok" : "warn"), label: L.checkCta },
+    { state: (c.slug ? "ok" : "warn"), label: L.checkSlug },
+    { state: (wcOk ? "ok" : (wcWarn ? "warn" : "err")), label: wcLabel },
+  ];
+  const cOk = checks.filter(function(x){return x.state==="ok";}).length;
+  const cWarn = checks.filter(function(x){return x.state==="warn";}).length;
+  const cErr = checks.filter(function(x){return x.state==="err";}).length;
+  const scoreNum = Math.round((cOk + cWarn * 0.5) / checks.length * 100);
+  const seoGradId = uid + "-sg";
+  const r = 40, circ = +(2 * Math.PI * r).toFixed(2), dashOff = +((1 - scoreNum / 100) * circ).toFixed(2);
+  const gaugeHtml = '<div class="seo-fz-gauge-wrap">' +
+    '<svg width="140" height="140" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">' +
+    '<defs><linearGradient id="' + seoGradId + '" x1="0%" y1="100%" x2="100%" y2="0%">' +
+    '<stop offset="0%" stop-color="#6C5CFF"/><stop offset="100%" stop-color="#6EE7FF"/></linearGradient></defs>' +
+    '<circle cx="50" cy="50" r="' + r + '" fill="none" stroke="rgba(120,120,255,0.1)" stroke-width="8"/>' +
+    '<circle cx="50" cy="50" r="' + r + '" fill="none" stroke="url(#' + seoGradId + ')" stroke-width="8" stroke-dasharray="' + circ + '" stroke-dashoffset="' + dashOff + '" stroke-linecap="round" transform="rotate(-90 50 50)"/>' +
+    '<text x="50" y="45" text-anchor="middle" font-size="22" font-weight="800" fill="white" font-family="system-ui,sans-serif">' + scoreNum + "</text>" +
+    '<text x="50" y="59" text-anchor="middle" font-size="8" font-weight="600" fill="#64748B" letter-spacing="1" font-family="system-ui,sans-serif">SCORE</text>' +
+    "</svg>" +
+    '<p class="seo-fz-gauge-checks">' + cOk + " of " + checks.length + ' <em>checks</em></p>' +
+    '<p class="seo-fz-gauge-detail">' + cWarn + " warning · " + cErr + " errors</p>" +
+    '<div class="seo-fz-gauge-pills">' +
+    (cOk > 0 ? '<span class="seo-fz-gauge-pill seo-fz-gauge-pill--ok">' + cOk + " ok</span>" : "") +
+    (cWarn > 0 ? '<span class="seo-fz-gauge-pill seo-fz-gauge-pill--warn">' + cWarn + " warn</span>" : "") +
+    "</div></div>";
+
+  const metaBadge = function(len: number, mn: number, mx: number) {
+    const s = len >= mn && len <= mx ? "ok" : (len >= mn - 15 && len <= mx + 20 ? "warn" : "err");
+    return '<span class="seo-fz-seo-meta-badge seo-fz-seo-meta-badge--' + s + '">' + len + " " + L.chars + "</span>";
+  };
+  const metaSection = '<div class="seo-fz-seo-meta">' +
+    '<div class="seo-fz-seo-meta-top-lbl">META</div>' +
+    '<div class="seo-fz-seo-meta-row"><div class="seo-fz-seo-meta-hdr"><span class="seo-fz-seo-meta-lbl">META TITLE</span>' + metaBadge(mtLen,50,60) + '</div><div class="seo-fz-seo-meta-val">' + esc(c.metaTitle||"—") + "</div></div>" +
+    '<div class="seo-fz-seo-meta-row"><div class="seo-fz-seo-meta-hdr"><span class="seo-fz-seo-meta-lbl">SLUG</span></div><div class="seo-fz-seo-meta-val seo-fz-seo-meta-val--slug">' + esc(c.slug||"—") + "</div></div>" +
+    '<div class="seo-fz-seo-meta-row"><div class="seo-fz-seo-meta-hdr"><span class="seo-fz-seo-meta-lbl">META DESCRIPTION</span>' + metaBadge(mdLen,140,160) + '</div><div class="seo-fz-seo-meta-val">' + esc(c.metaDescription||"—") + "</div></div>" +
+    '<div class="seo-fz-seo-meta-row"><div class="seo-fz-seo-meta-hdr"><span class="seo-fz-seo-meta-lbl">H1</span></div><div class="seo-fz-seo-meta-val">' + esc(c.h1||"—") + "</div></div>" +
+    "</div>";
+
+  const clGrid = '<div class="seo-fz-seo-cl-grid">' + checks.map(function(ch) {
+    const badge = ch.state==="ok" ? "✓ PASS" : ch.state==="warn" ? "! WARN" : "✗ FAIL";
+    return '<div class="seo-fz-seo-cl-card seo-fz-seo-cl-card--' + ch.state + '"><div class="seo-fz-seo-cl-badge seo-fz-seo-cl-badge--' + ch.state + '">' + badge + '</div><p class="seo-fz-seo-cl-text">' + esc(ch.label) + "</p></div>";
+  }).join("") + "</div>";
 
   // Extract images from article HTML
   const imgMatches = Array.from(articleHtml.matchAll(/<img[^>]*>/gi));
@@ -323,7 +367,7 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
     const getA = function(attr: string) {
       const r1 = tag.match(new RegExp(attr + '\\s*=\\s*"([^"]*)"', 'i'));
       if (r1) return r1[1];
-      const r2 = tag.match(new RegExp(attr + "\\s*=\\s*'([^']*)'", 'i'));
+      const r2 = tag.match(new RegExp(attr + "\\s*=\\s*'([^']*)'",'i'));
       return r2 ? r2[1] : "";
     };
     const src = getA('src');
@@ -335,148 +379,123 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
     return '<div class="seo-fz-seo-img-row">' +
       '<div class="seo-fz-seo-img-src"><code>' + esc(srcShort) + "</code></div>" +
       '<div class="seo-fz-seo-img-fields">' +
-      '<span class="seo-fz-seo-img-label">' + L.altCurrent + '</span>' +
+      '<span class="seo-fz-seo-img-field-lbl">' + L.altCurrent + '</span>' +
       '<span class="seo-fz-seo-img-val' + (alt ? "" : " seo-fz-seo-img-val--empty") + '">' + (alt ? esc(alt) : "—") + "</span>" +
-      '<span class="seo-fz-seo-img-label">' + L.altSuggested + '</span>' +
-      '<span class="seo-fz-seo-img-val seo-fz-seo-img-val--suggested">' + esc(suggestedAlt) + "</span>" +
-      (title ? '<span class="seo-fz-seo-img-label">' + L.titleAttr + '</span><span class="seo-fz-seo-img-val">' + esc(title) + "</span>" : "") +
+      '<span class="seo-fz-seo-img-field-lbl">' + L.altSuggested + '</span>' +
+      '<span class="seo-fz-seo-img-val seo-fz-seo-img-val--sug">' + esc(suggestedAlt) + "</span>" +
+      (title ? '<span class="seo-fz-seo-img-field-lbl">' + L.titleAttr + '</span><span class="seo-fz-seo-img-val">' + esc(title) + "</span>" : "") +
       "</div></div>";
   }).filter(Boolean);
 
-  const imgsHtml = imgRows.length
-    ? imgRows.join("")
-    : '<p class="seo-fz-seo-no-imgs">' + esc(L.noImagesFound) + "</p>";
-
   const seoHtml = '<div class="seo-fz-seo">' +
-    '<div class="seo-fz-seo-section">' +
-    '<h3 class="seo-fz-seo-section-title">' + L.metaOg + "</h3>" +
-    '<div class="seo-fz-seo-meta-grid">' +
-    '<div class="seo-fz-seo-meta-field seo-fz-seo-meta-field--full">' +
-    '<div class="seo-fz-seo-meta-header"><span class="seo-fz-seo-meta-label">Meta title</span>' + charBadge(mtLen, 50, 60) + "</div>" +
-    '<div class="seo-fz-seo-meta-value">' + esc(c.metaTitle || "—") + "</div></div>" +
-    '<div class="seo-fz-seo-meta-field seo-fz-seo-meta-field--full">' +
-    '<div class="seo-fz-seo-meta-header"><span class="seo-fz-seo-meta-label">Meta description</span>' + charBadge(mdLen, 140, 160) + "</div>" +
-    '<div class="seo-fz-seo-meta-value">' + esc(c.metaDescription || "—") + "</div></div>" +
-    '<div class="seo-fz-seo-meta-field">' +
-    '<div class="seo-fz-seo-meta-header"><span class="seo-fz-seo-meta-label">H1</span></div>' +
-    '<div class="seo-fz-seo-meta-value">' + esc(c.h1 || "—") + "</div></div>" +
-    '<div class="seo-fz-seo-meta-field">' +
-    '<div class="seo-fz-seo-meta-header"><span class="seo-fz-seo-meta-label">Slug</span></div>' +
-    '<div class="seo-fz-seo-meta-value seo-fz-seo-meta-value--slug">' + esc(c.slug || "—") + "</div></div>" +
-    '<div class="seo-fz-seo-og seo-fz-seo-meta-field--full">' +
-    '<div class="seo-fz-seo-og-title">Open Graph</div>' +
-    '<div class="seo-fz-seo-og-row"><code>og:title</code><span>' + esc(ogTitle) + "</span></div>" +
-    '<div class="seo-fz-seo-og-row"><code>og:description</code><span>' + esc(ogDesc.slice(0, 120) + (ogDesc.length > 120 ? "…" : "")) + "</span></div>" +
-    '<div class="seo-fz-seo-og-row"><code>og:type</code><span>article</span></div>' +
-    '<div class="seo-fz-seo-og-row"><code>og:image</code><span class="seo-fz-seo-og-note">' + esc(L.ogImageNote) + "</span></div>" +
-    "</div></div></div>" +
-    '<div class="seo-fz-seo-section"><h3 class="seo-fz-seo-section-title">' + L.seoChecklist + "</h3>" + checklistHtml + "</div>" +
-    '<div class="seo-fz-seo-section"><h3 class="seo-fz-seo-section-title">' + L.seoImages + "</h3>" +
-    '<p class="seo-fz-seo-img-note">' + esc(L.featuredImageNote) + "</p>" +
-    imgsHtml + "</div></div>";
+    '<div class="seo-fz-seo-top">' + gaugeHtml + metaSection + "</div>" +
+    '<div class="seo-fz-seo-cl-section"><div class="seo-fz-seo-cl-lbl">CHECKLIST</div>' + clGrid + "</div>" +
+    (imgRows.length ? '<div class="seo-fz-seo-img-section"><div class="seo-fz-seo-img-lbl">' + L.seoImages + '</div><p class="seo-fz-seo-img-note">' + esc(L.featuredImageNote) + "</p>" + imgRows.join("") + "</div>" : "") +
+    "</div>";
 
   // ── STYLES ─────────────────────────────────────────────────────
   const styles = `<style data-fz="1">
-::-webkit-scrollbar{width:10px}
-::-webkit-scrollbar-track{background:#111118}
-::-webkit-scrollbar-thumb{background:#6C5CFF;border-radius:999px}
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:#06060E}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#6C3AFF,#00E5FF);border-radius:999px}
 .seo-fz-sep{margin:48px 0 0;padding:0}
-.seo-fz-sep-line{height:2px;background:linear-gradient(90deg,transparent 0%,rgba(108,92,255,0.25) 20%,rgba(108,92,255,0.6) 50%,rgba(108,92,255,0.25) 80%,transparent 100%)}
-.seo-fz-wrapper{margin:32px 0 0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;color:#A8B3CF;background:#0B0B0F;border-radius:18px;border:1px solid rgba(120,120,255,0.12)}
-.seo-fz-header{display:flex;align-items:center;gap:12px;margin:0 0 24px;padding-bottom:24px;border-bottom:1px solid rgba(140,140,255,0.15)}
-.seo-fz-header-line{flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(108,92,255,0.25))}
-.seo-fz-header-label{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9B8CFF;white-space:nowrap;padding:0 8px;text-shadow:0 0 12px rgba(155,140,255,0.5)}
-.seo-fz-tabs{display:flex;justify-content:space-between;gap:4px;padding:6px;background:#14141B;border-radius:14px;margin:0 0 8px;border:1px solid rgba(120,120,255,0.12)}
-.seo-fz-tab-sep{height:1px;background:rgba(140,140,255,0.15);margin:0 0 32px}
-.seo-fz-tab{flex:1;padding:12px 16px;border:none;background:transparent;border-radius:10px;cursor:pointer;transition:all .2s;text-align:left;display:flex;flex-direction:column;gap:2px}
-.seo-fz-tab-num{font-size:11px;font-weight:700;letter-spacing:.06em;color:#7C8FA6;transition:color .2s}
-.seo-fz-tab-main{font-size:13px;font-weight:600;color:#94A3B8;transition:color .2s;white-space:nowrap}
-.seo-fz-tab-sub{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#64748B;transition:color .2s}
-.seo-fz-tab:hover{background:#1B1B24}
-.seo-fz-tab:hover .seo-fz-tab-num{color:#9B8CFF}
-.seo-fz-tab:hover .seo-fz-tab-main{color:#A8B3CF}
-.seo-fz-tab:hover .seo-fz-tab-sub{color:#6B7280}
-.seo-fz-tab--active{background:rgba(108,92,255,0.12);border:1px solid rgba(108,92,255,0.35);box-shadow:0 0 12px rgba(108,92,255,0.15)}
-.seo-fz-tab--active .seo-fz-tab-num{color:#9B8CFF}
-.seo-fz-tab--active .seo-fz-tab-main{color:#FFFFFF;font-weight:700}
-.seo-fz-tab--active .seo-fz-tab-sub{color:#6EE7FF}
-.seo-fz-panel{display:none}.seo-fz-panel--active{display:block}
-.seo-fz-assets{}.seo-fz-asset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
-.seo-fz-asset-card{background:#1B1B24;border:1px solid rgba(120,120,255,0.12);border-radius:14px;padding:16px 18px;transition:background .2s}
-.seo-fz-asset-card:hover{background:#222230}
+.seo-fz-sep-line{height:1px;background:linear-gradient(90deg,transparent,rgba(108,58,255,0.5) 30%,rgba(0,229,255,0.5) 70%,transparent)}
+.seo-fz-wrapper{margin:32px 0 0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;color:#94A3B8;background:#06060E;border-radius:20px;border:1px solid rgba(108,92,255,0.2);box-shadow:0 0 60px rgba(108,58,255,0.08),inset 0 1px 0 rgba(108,58,255,0.15);overflow:hidden;position:relative}
+.seo-fz-header{display:flex;align-items:center;gap:14px;padding:22px 24px 0}
+.seo-fz-header-line{flex:1;height:1px;background:linear-gradient(90deg,rgba(108,92,255,0.3),transparent)}
+.seo-fz-header-label{font-size:9px;font-weight:900;letter-spacing:.22em;text-transform:uppercase;color:#9B8CFF;white-space:nowrap;text-shadow:0 0 20px rgba(108,92,255,0.9)}
+.seo-fz-tabs{display:flex;gap:0;margin:18px 0 0;padding:0 8px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(0,0,0,0.3)}
+.seo-fz-tab{flex:1;padding:13px 8px;display:flex;align-items:center;gap:8px;border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;position:relative;bottom:-1px;transition:border-color .2s;text-align:left}
+.seo-fz-tab:nth-child(1){--tr:252,211,77}
+.seo-fz-tab:nth-child(2){--tr:0,229,255}
+.seo-fz-tab:nth-child(3){--tr:192,132,252}
+.seo-fz-tab:nth-child(4){--tr:0,255,135}
+.seo-fz-tab-icon{width:30px;height:30px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);color:#1E293B;transition:all .25s}
+.seo-fz-tab-labels{display:flex;flex-direction:column;gap:1px}
+.seo-fz-tab-main{font-size:11px;font-weight:700;color:#1E293B;white-space:nowrap;transition:color .25s}
+.seo-fz-tab-sub{font-size:8px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#1E293B;transition:color .25s}
+.seo-fz-tab:hover .seo-fz-tab-icon,.seo-fz-tab.seo-fz-tab--active .seo-fz-tab-icon{background:rgba(var(--tr),.08);border-color:rgba(var(--tr),.35);color:rgb(var(--tr));box-shadow:0 0 12px rgba(var(--tr),.2)}
+.seo-fz-tab.seo-fz-tab--active{border-bottom-color:rgb(var(--tr))}
+.seo-fz-tab.seo-fz-tab--active .seo-fz-tab-main{color:rgb(var(--tr));text-shadow:0 0 12px rgba(var(--tr),.6)}
+.seo-fz-tab.seo-fz-tab--active .seo-fz-tab-sub{color:rgba(var(--tr),.6)}
+.seo-fz-panel{display:none}.seo-fz-panel--active{display:block;padding:24px}
+.seo-fz-asset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.seo-fz-asset-card{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:16px}
 .seo-fz-asset-card--wide{grid-column:span 2}.seo-fz-asset-card--full{grid-column:1/-1}
-.seo-fz-asset-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6EE7FF;margin:0 0 8px;text-shadow:0 0 8px rgba(110,231,255,0.25)}
-.seo-fz-asset-value{font-size:14px;color:#FFFFFF;line-height:1.6}
-.seo-fz-kw-main{font-size:18px;font-weight:800;color:#FFFFFF;text-shadow:0 0 20px rgba(155,140,255,0.3)}
-.seo-fz-asset-tags{display:flex;flex-wrap:wrap;gap:8px}
-.seo-fz-tag{background:rgba(108,92,255,0.12);border:1px solid rgba(108,92,255,0.35);color:#C6BEFF;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500}
-.seo-fz-asset-ol,.seo-fz-asset-ul{margin:8px 0 0;padding:0 0 0 18px;font-size:13px;color:#CBD5E1;line-height:1.8}
-.seo-fz-cj{}.seo-fz-cj-stages{display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding:8px 0 24px;-webkit-overflow-scrolling:touch}
-.seo-fz-cj-stage{flex:0 0 220px;background:#1B1B24;border:1px solid rgba(120,120,255,0.15);border-radius:14px;padding:18px 16px;box-shadow:0 4px 24px rgba(0,0,0,0.4)}
-.seo-fz-cj-arrow{flex:0 0 auto;align-self:center;font-size:20px;color:#6C5CFF;padding:0 8px;font-weight:300;text-shadow:0 0 8px rgba(108,92,255,0.5)}
-.seo-fz-cj-stage-header{display:flex;align-items:center;gap:8px;margin:0 0 8px}
-.seo-fz-cj-icon{font-size:20px;line-height:1}
-.seo-fz-cj-stage-num{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9B8CFF}
-.seo-fz-cj-stage-name{font-size:15px;font-weight:700;color:#FFFFFF;margin:0 0 12px;line-height:1.3}
-.seo-fz-cj-field{margin:0 0 10px}
-.seo-fz-cj-field-label{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7CFFB2;margin:0 0 4px;text-shadow:0 0 8px rgba(124,255,178,0.2)}
-.seo-fz-cj-field p{margin:0;font-size:12px;color:#CBD5E1;line-height:1.6}
-.seo-fz-cj-ref{margin-top:10px;font-size:11px;color:#9B8CFF;font-style:italic;border-top:1px solid rgba(120,120,255,0.15);padding-top:8px}
-.seo-fz-cj-insights{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin:24px 0 0}
-.seo-fz-cj-insight{background:#1B1B24;border:1px solid rgba(108,92,255,0.25);border-radius:14px;padding:16px;box-shadow:0 0 12px rgba(108,92,255,0.08)}
-.seo-fz-insight-title{margin:0 0 8px;font-size:13px;font-weight:700;color:#9B8CFF;text-shadow:0 0 8px rgba(155,140,255,0.3)}
-.seo-fz-cj-insight p{margin:0;font-size:13px;color:#A8B3CF;line-height:1.6}
-.seo-fz-cj-fallback{background:#1B1B24;border-radius:14px;padding:20px;font-size:14px;color:#A8B3CF}
-.seo-fz-el{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
-.seo-fz-el-block{background:#1B1B24;border:1px solid rgba(120,120,255,0.12);border-radius:14px;padding:18px}
-.seo-fz-el-block--highlight{background:rgba(108,92,255,0.08);border-color:rgba(108,92,255,0.35);box-shadow:0 0 12px rgba(108,92,255,0.12)}
-.seo-fz-el-title{margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#C084FC;text-shadow:0 0 8px rgba(192,132,252,0.25)}
-.seo-fz-el-block p{margin:0 0 8px;font-size:13px;color:#CBD5E1;line-height:1.7}
+.seo-fz-asset-label{font-size:9px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#FCD34D;margin:0 0 10px;text-shadow:0 0 14px rgba(252,211,77,0.5)}
+.seo-fz-asset-value{font-size:13px;color:#CBD5E1;line-height:1.6}
+.seo-fz-kw-main{font-size:19px;font-weight:900;color:#FFFFFF;line-height:1.2}
+.seo-fz-asset-tags{display:flex;flex-wrap:wrap;gap:6px}
+.seo-fz-tag{background:rgba(108,92,255,0.1);border:1px solid rgba(108,92,255,0.25);color:#A78BFA;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.seo-fz-asset-ol,.seo-fz-asset-ul{margin:8px 0 0;padding:0 0 0 16px;font-size:12px;color:#94A3B8;line-height:1.9}
+.seo-fz-wrapper .seo-fz-asset-ol li,.seo-fz-wrapper .seo-fz-asset-ul li{color:#CBD5E1}
+.seo-fz-cj-flow{margin:0 0 20px;padding:16px 18px 14px;background:rgba(0,229,255,0.03);border-radius:13px;border:1px solid rgba(0,229,255,0.08)}
+.seo-fz-cj-flow-label{display:block;font-size:9px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#00E5FF;margin:0 0 14px;text-shadow:0 0 14px rgba(0,229,255,0.6)}
+.seo-fz-cj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.seo-fz-cj-card{background:rgba(0,229,255,0.03);border:1px solid rgba(0,229,255,0.1);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.seo-fz-cj-card-hdr{display:flex;align-items:flex-start;gap:10px}
+.seo-fz-cj-card-num{width:26px;height:26px;border-radius:8px;background:rgba(0,229,255,0.1);border:1.5px solid rgba(0,229,255,0.35);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#00E5FF;flex-shrink:0;box-shadow:0 0 10px rgba(0,229,255,0.2)}
+.seo-fz-cj-card-name{font-size:13px;font-weight:700;color:#F0F9FF;line-height:1.3}
+.seo-fz-cj-card-field{display:flex;flex-direction:column;gap:4px}
+.seo-fz-cj-card-lbl{font-size:9px;font-weight:900;letter-spacing:.13em;text-transform:uppercase;color:#00E5FF;text-shadow:0 0 10px rgba(0,229,255,0.5)}
+.seo-fz-cj-card-txt{font-size:12px;color:#94A3B8;line-height:1.6;margin:0}
+.seo-fz-cj-card-summary{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.seo-fz-cj-card-exp{max-height:0;overflow:hidden;transition:max-height .4s ease,opacity .3s ease;opacity:0}
+.seo-fz-cj-card-exp--open{max-height:600px;opacity:1}
+.seo-fz-cj-toggle{display:block;margin-top:10px;width:100%;padding:6px 12px;border-radius:8px;border:1px solid rgba(0,229,255,0.15);background:rgba(0,229,255,0.05);color:#67E8F9;font-size:10px;font-weight:700;cursor:pointer;text-align:center;letter-spacing:.05em}
+.seo-fz-cj-card-ref{margin-top:auto;padding-top:10px;border-top:1px solid rgba(0,229,255,0.08)}
+.seo-fz-cj-ref-pill{display:inline-flex;align-items:center;gap:4px;background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.2);border-radius:20px;padding:3px 10px;font-size:10px;color:#67E8F9;font-weight:600}
+.seo-fz-cj-fallback{background:rgba(255,255,255,0.02);border-radius:12px;padding:16px;font-size:13px;color:#475569}
+.seo-fz-cj-insights{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin:20px 0 0}
+.seo-fz-cj-insight{background:rgba(0,229,255,0.03);border:1px solid rgba(0,229,255,0.08);border-radius:12px;padding:16px}
+.seo-fz-insight-title{margin:0 0 8px;font-size:9px;font-weight:900;letter-spacing:.13em;text-transform:uppercase;color:#00E5FF;text-shadow:0 0 10px rgba(0,229,255,0.5)}
+.seo-fz-cj-insight p{margin:0;font-size:12px;color:#94A3B8;line-height:1.6}
+.seo-fz-el{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.seo-fz-el-block{background:rgba(192,132,252,0.03);border:1px solid rgba(192,132,252,0.08);border-radius:14px;padding:18px}
+.seo-fz-el-block--highlight{background:rgba(192,132,252,0.06);border-color:rgba(192,132,252,0.2)}
+.seo-fz-el-title{margin:0 0 10px;font-size:9px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#C084FC;text-shadow:0 0 12px rgba(192,132,252,0.5)}
+.seo-fz-el-block p{margin:0 0 8px;font-size:12px;color:#94A3B8;line-height:1.7}
 .seo-fz-el-block p:last-child{margin-bottom:0}
-.seo-fz-el-list{margin:0;padding:0 0 0 16px;font-size:13px;color:#CBD5E1;line-height:1.8}
-@media(max-width:640px){
-  .seo-fz-tabs{flex-direction:column}
-  .seo-fz-asset-card--wide{grid-column:span 1}
-  .seo-fz-cj-stages{flex-direction:column;overflow-x:visible}
-  .seo-fz-cj-arrow{transform:rotate(90deg);align-self:flex-start;padding:4px 0}
-  .seo-fz-el{grid-template-columns:1fr}
-}
-.seo-fz-seo{display:flex;flex-direction:column;gap:24px}
-.seo-fz-seo-section{background:#1B1B24;border:1px solid rgba(120,120,255,0.12);border-radius:14px;padding:20px}
-.seo-fz-seo-section-title{margin:0 0 16px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#FCD34D;text-shadow:0 0 8px rgba(252,211,77,0.25)}
-.seo-fz-seo-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.seo-fz-seo-meta-field{background:#14141B;border:1px solid rgba(120,120,255,0.12);border-radius:10px;padding:12px 14px}
-.seo-fz-seo-meta-field--full{grid-column:1/-1}
-.seo-fz-seo-meta-header{display:flex;align-items:center;justify-content:space-between;margin:0 0 6px}
-.seo-fz-seo-meta-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9B8CFF}
-.seo-fz-seo-meta-value{font-size:13px;color:#FFFFFF;line-height:1.6}
-.seo-fz-seo-meta-value--slug{font-family:monospace;font-size:12px;color:#6EE7FF}
-.seo-fz-seo-badge{padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700}
-.seo-fz-seo-badge--ok{background:rgba(124,255,178,0.15);color:#7CFFB2;border:1px solid rgba(124,255,178,0.3)}
-.seo-fz-seo-badge--warn{background:rgba(251,191,36,0.12);color:#FCD34D;border:1px solid rgba(251,191,36,0.25)}
-.seo-fz-seo-badge--err{background:rgba(239,68,68,0.12);color:#F87171;border:1px solid rgba(239,68,68,0.25)}
-.seo-fz-seo-og{background:#14141B;border:1px solid rgba(108,92,255,0.25);border-radius:10px;padding:14px;box-shadow:0 0 12px rgba(108,92,255,0.08)}
-.seo-fz-seo-og-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9B8CFF;margin:0 0 10px;text-shadow:0 0 8px rgba(155,140,255,0.3)}
-.seo-fz-seo-og-row{display:flex;gap:10px;align-items:baseline;margin:0 0 6px;font-size:12px}
-.seo-fz-seo-og-row code{flex:0 0 120px;color:#6EE7FF;font-size:11px}
-.seo-fz-seo-og-row span{color:#A8B3CF;line-height:1.5}
-.seo-fz-seo-og-note{color:#6B7280;font-style:italic}
-.seo-fz-seo-checklist{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
-.seo-fz-seo-check{font-size:13px;padding:8px 14px;border-radius:10px;line-height:1.5}
-.seo-fz-seo-check--ok{background:rgba(124,255,178,0.08);color:#7CFFB2;border:1px solid rgba(124,255,178,0.2)}
-.seo-fz-seo-check--warn{background:rgba(251,191,36,0.08);color:#FCD34D;border:1px solid rgba(251,191,36,0.2)}
-.seo-fz-seo-check--err{background:rgba(239,68,68,0.08);color:#F87171;border:1px solid rgba(239,68,68,0.2)}
-.seo-fz-seo-img-note{margin:0 0 16px;font-size:12px;color:#6B7280;font-style:italic}
-.seo-fz-seo-no-imgs{font-size:13px;color:#6B7280;font-style:italic;margin:0}
-.seo-fz-seo-img-row{border:1px solid rgba(120,120,255,0.12);border-radius:10px;padding:12px 14px;margin:0 0 10px;background:#14141B}
-.seo-fz-seo-img-src{margin:0 0 10px;overflow:hidden}
-.seo-fz-seo-img-src code{font-size:11px;color:#9B8CFF;word-break:break-all}
-.seo-fz-seo-img-fields{display:grid;grid-template-columns:100px 1fr;gap:4px 10px;align-items:baseline;font-size:12px}
-.seo-fz-seo-img-label{font-weight:700;color:#6EE7FF;text-transform:uppercase;font-size:10px;letter-spacing:.06em}
-.seo-fz-seo-img-val{color:#A8B3CF;line-height:1.5}
-.seo-fz-seo-img-val--empty{color:#4B5563;font-style:italic}
-.seo-fz-seo-img-val--suggested{color:#6EE7FF;font-weight:500}
-@media(max-width:640px){.seo-fz-seo-meta-grid{grid-template-columns:1fr}.seo-fz-seo-og-row{flex-wrap:wrap}.seo-fz-seo-og-row code{flex:none}}
+.seo-fz-el-list{margin:0;padding:0 0 0 14px;font-size:12px;color:#94A3B8;line-height:1.9}
+.seo-fz-seo{display:flex;flex-direction:column;gap:16px}
+.seo-fz-seo-top{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start}
+.seo-fz-gauge-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px 16px;background:rgba(0,255,135,0.03);border:1px solid rgba(0,255,135,0.1);border-radius:14px;min-width:155px}
+.seo-fz-gauge-checks{margin:0;font-size:15px;font-weight:700;color:#FFFFFF;text-align:center}
+.seo-fz-gauge-checks em{color:#00FF87;font-style:normal;text-shadow:0 0 20px rgba(0,255,135,0.7)}
+.seo-fz-gauge-detail{margin:0;font-size:10px;color:#475569;text-align:center}
+.seo-fz-gauge-pills{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;justify-content:center}
+.seo-fz-gauge-pill{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700}
+.seo-fz-gauge-pill--ok{background:rgba(0,255,135,0.1);color:#00FF87;border:1px solid rgba(0,255,135,0.25)}
+.seo-fz-gauge-pill--warn{background:rgba(252,211,77,0.1);color:#FCD34D;border:1px solid rgba(252,211,77,0.25)}
+.seo-fz-seo-meta{background:rgba(0,255,135,0.02);border:1px solid rgba(0,255,135,0.08);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.seo-fz-seo-meta-top-lbl{font-size:9px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#FCD34D;margin:0 0 2px;text-shadow:0 0 10px rgba(252,211,77,0.4)}
+.seo-fz-seo-meta-row{display:flex;flex-direction:column;gap:6px}
+.seo-fz-seo-meta-hdr{display:flex;align-items:center;justify-content:space-between}
+.seo-fz-seo-meta-lbl{font-size:9px;font-weight:900;letter-spacing:.13em;text-transform:uppercase;color:#00FF87;text-shadow:0 0 10px rgba(0,255,135,0.4)}
+.seo-fz-seo-meta-badge{padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700}
+.seo-fz-seo-meta-badge--ok{background:rgba(0,255,135,0.1);color:#00FF87;border:1px solid rgba(0,255,135,0.25)}
+.seo-fz-seo-meta-badge--warn{background:rgba(252,211,77,0.1);color:#FCD34D;border:1px solid rgba(252,211,77,0.2)}
+.seo-fz-seo-meta-badge--err{background:rgba(239,68,68,0.1);color:#F87171;border:1px solid rgba(239,68,68,0.2)}
+.seo-fz-seo-meta-val{background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px 12px;font-size:12px;color:#E2E8F0;line-height:1.5}
+.seo-fz-seo-meta-val--slug{font-family:monospace;font-size:11px;color:#00E5FF}
+.seo-fz-seo-cl-section{background:rgba(0,255,135,0.02);border:1px solid rgba(0,255,135,0.07);border-radius:14px;padding:18px}
+.seo-fz-seo-cl-lbl{font-size:9px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#FCD34D;margin:0 0 14px;text-shadow:0 0 10px rgba(252,211,77,0.4)}
+.seo-fz-seo-cl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px}
+.seo-fz-seo-cl-card{background:rgba(0,0,0,0.2);border-radius:10px;padding:10px 12px;border:1px solid transparent}
+.seo-fz-seo-cl-card--ok{border-color:rgba(0,255,135,0.12)}.seo-fz-seo-cl-card--warn{border-color:rgba(252,211,77,0.12)}.seo-fz-seo-cl-card--err{border-color:rgba(239,68,68,0.12)}
+.seo-fz-seo-cl-badge{font-size:9px;font-weight:900;letter-spacing:.05em;margin:0 0 5px}
+.seo-fz-seo-cl-badge--ok{color:#00FF87;text-shadow:0 0 8px rgba(0,255,135,0.5)}.seo-fz-seo-cl-badge--warn{color:#FCD34D}.seo-fz-seo-cl-badge--err{color:#F87171}
+.seo-fz-seo-cl-text{font-size:10px;color:#475569;line-height:1.4;margin:0}
+.seo-fz-seo-img-section{background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.05);border-radius:14px;padding:18px}
+.seo-fz-seo-img-lbl{font-size:9px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#FCD34D;margin:0 0 10px;text-shadow:0 0 10px rgba(252,211,77,0.4)}
+.seo-fz-seo-img-note,.seo-fz-seo-no-imgs{margin:0 0 14px;font-size:11px;color:#475569;font-style:italic}
+.seo-fz-seo-no-imgs{margin:0}
+.seo-fz-seo-img-row{border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:12px;margin:0 0 8px;background:rgba(0,0,0,0.2)}
+.seo-fz-seo-img-src{margin:0 0 8px}.seo-fz-seo-img-src code{font-size:10px;color:#7C3AED;word-break:break-all}
+.seo-fz-seo-img-fields{display:grid;grid-template-columns:90px 1fr;gap:4px 8px;font-size:11px}
+.seo-fz-seo-img-field-lbl{font-weight:900;color:#00E5FF;text-transform:uppercase;font-size:9px;letter-spacing:.09em}
+.seo-fz-seo-img-val{color:#E2E8F0;line-height:1.5}.seo-fz-seo-img-val--empty{color:#334155;font-style:italic}.seo-fz-seo-img-val--sug{color:#00E5FF;font-weight:600}
+@media(max-width:768px){.seo-fz-tabs{flex-wrap:wrap}.seo-fz-tab{flex:1 1 50%}.seo-fz-asset-card--wide{grid-column:span 1}.seo-fz-cj-grid{grid-template-columns:1fr}.seo-fz-el{grid-template-columns:1fr}.seo-fz-seo-top{grid-template-columns:1fr}.seo-fz-seo-cl-grid{grid-template-columns:repeat(2,1fr)}}
 </style>`;
 
 
@@ -489,10 +508,10 @@ function buildFooterZone(cj: J, el: J, c: Contract, val: Val, articleHtml: strin
     <div class="seo-fz-header-line"></div>
   </div>
   <nav class="seo-fz-tabs" role="tablist">
-    <button class="seo-fz-tab seo-fz-tab--active" role="tab" aria-selected="true" onclick="${tabJs(uid + '-assets')}"><span class="seo-fz-tab-num">01</span><span class="seo-fz-tab-main">${L.assets}</span><span class="seo-fz-tab-sub">${L.assetsTag}</span></button>
-    <button class="seo-fz-tab" role="tab" aria-selected="false" onclick="${tabJs(uid + '-cj')}"><span class="seo-fz-tab-num">02</span><span class="seo-fz-tab-main">${L.customerJourney}</span><span class="seo-fz-tab-sub">${L.customerJourneyTag}</span></button>
-    <button class="seo-fz-tab" role="tab" aria-selected="false" onclick="${tabJs(uid + '-el')}"><span class="seo-fz-tab-num">03</span><span class="seo-fz-tab-main">${L.editorialLogic}</span><span class="seo-fz-tab-sub">${L.editorialLogicTag}</span></button>
-    <button class="seo-fz-tab" role="tab" aria-selected="false" onclick="${tabJs(uid + '-seo')}"><span class="seo-fz-tab-num">04</span><span class="seo-fz-tab-main">${L.seoOptimization}</span><span class="seo-fz-tab-sub">${L.seoOptimizationTag}</span></button>
+    <button class="seo-fz-tab seo-fz-tab--active" role="tab" aria-selected="true" onclick="${tabJs(uid + '-assets')}"><span class="seo-fz-tab-icon">01</span><span class="seo-fz-tab-labels"><span class="seo-fz-tab-main">${L.assets}</span><span class="seo-fz-tab-sub">${L.assetsTag}</span></span></button>
+    <button class="seo-fz-tab" role="tab" aria-selected="false" onclick="${tabJs(uid + '-cj')}"><span class="seo-fz-tab-icon">02</span><span class="seo-fz-tab-labels"><span class="seo-fz-tab-main">${L.customerJourney}</span><span class="seo-fz-tab-sub">${L.customerJourneyTag}</span></span></button>
+    <button class="seo-fz-tab" role="tab" aria-selected="false" onclick="${tabJs(uid + '-el')}"><span class="seo-fz-tab-icon">03</span><span class="seo-fz-tab-labels"><span class="seo-fz-tab-main">${L.editorialLogic}</span><span class="seo-fz-tab-sub">${L.editorialLogicTag}</span></span></button>
+    <button class="seo-fz-tab" role="tab" aria-selected="false" onclick="${tabJs(uid + '-seo')}"><span class="seo-fz-tab-icon">04</span><span class="seo-fz-tab-labels"><span class="seo-fz-tab-main">${L.seoOptimization}</span><span class="seo-fz-tab-sub">${L.seoOptimizationTag}</span></span></button>
   </nav>
   <div class="seo-fz-tab-sep" aria-hidden="true"></div>
   <div class="seo-fz-panels">
@@ -533,7 +552,7 @@ serve(async (req) => {
     if (!dryRun) await patch(env,"content_items",item.id,{status:"in_progress",status_wp:"pending",status_wp_msg:`Orchestrator ${VERSION}: generando por secciones.`,custom_metadata:mergeMeta(item.custom_metadata,{generation_run_id:runId,seo_swarm_engine_version:VERSION,brief_contract:contract,publication:false,generation_strategy:"sectioned"})});
     const language = item.language||project?.idioma_objetivo||"es";
     const master = {id:item.id,title:item.title,brand:project?.nombremarca,country:project?.paisobjetivo,language,brief_data:item.brief_data,raw_source_content:item.raw_source_content,contract};
-    const seo = dryRun ? {search_intent:contract.intent,content_angle:contract.angle,h1:contract.h1,outline:contract.h2} : await agent(env,"seo-expert",promptSeo(master,contract),"OPENROUTER_MODEL_SEO_EXPERT",45000);
+    const seo = dryRun ? {search_intent:contract.intent,content_angle:contract.angle,h1:contract.h1,outline:contract.h2} : await agentRetry(env,"seo-expert",promptSeo(master,contract),"OPENROUTER_MODEL_SEO_EXPERT",90000);
     await log(env,runId,item.id,"seo_expert","seo-expert","ok",redact(seo));
     const parts:string[] = [];
     for (const section of contract.sections) {
@@ -554,7 +573,7 @@ serve(async (req) => {
         const missing = contract.min - val.wordCount;
         const out = await agent(env,`expansion-${i}`,promptExpansion(master,contract,article,val,missing),"OPENROUTER_MODEL_CONTENT_WRITER",70000);
         assertKeys(out,["section_html"]);
-        parts.push(clean(String(out.section_html||"")));
+        parts.push(clean(String(out.section_html||"")))
         article = assemble(contract,parts,language);
         val = validate(article,contract);
         await log(env,runId,item.id,`expansion_${i}`,"content-writer",val.passed?"ok":"error",{missing_before:missing,validation:val,result:redact(out)},val.passed?undefined:"error_contract_validation",val.issues.join("; "));
@@ -752,6 +771,16 @@ function assemble(c:Contract,parts:string[],language:string,footerZone:string=""
 async function saveFailure(env:ReturnType<typeof envs>,item:Item,runId:string,msg:string,code:string,partial:string,c:Contract|null){if(partial&&words(strip(partial))>250){const val=validate(partial,c||makeContract(item.brief_data,item));await patch(env,"content_items",item.id,{article_content:partial,word_count:val.wordCount,actual_word_count:val.wordCount,character_count:partial.length,status:"pending_review",status_wp:"pending",status_wp_msg:"Borrador parcial guardado por error/timeout.",processed_at:new Date().toISOString(),custom_metadata:mergeMeta(item.custom_metadata,{generation_run_id:runId,seo_swarm_engine_version:VERSION,contract_passed:false,contract_validation:val,quality_gate:"partial_saved_after_error",last_failure_code:code,last_failure_message:msg,article_generation_retriable:true,required_human_review:true})})}else await patch(env,"content_items",item.id,{status:"pending_review",status_wp:"pending",status_wp_msg:`Generación falló: ${msg}.`,processed_at:new Date().toISOString(),custom_metadata:mergeMeta(item.custom_metadata,{generation_run_id:runId,seo_swarm_engine_version:VERSION,contract_passed:false,quality_gate:"failed_before_article",last_failure_code:code,last_failure_message:msg,article_generation_retriable:true,required_human_review:true})})}
 async function agent(env:ReturnType<typeof envs>,name:string,prompt:string,modelEnv:string,timeoutMs:number){const model=Deno.env.get(modelEnv);if(!model)throw new Error(`error_modelo: ${modelEnv} no configurado`);if(!env.openRouterKey)throw new Error("error_modelo: OPENROUTER_API_KEY no configurado");const ac=new AbortController(),to=setTimeout(()=>ac.abort(),timeoutMs);try{const res=await fetch("https://openrouter.ai/api/v1/chat/completions",{method:"POST",signal:ac.signal,headers:{authorization:`Bearer ${env.openRouterKey}`,"content-type":"application/json","HTTP-Referer":"https://github.com/accesos-seo/ops-control-plane","X-Title":"seo-sectioned-engine"},body:JSON.stringify({model,messages:[{role:"system",content:"Respond with valid JSON only. No markdown. Write all content in the language specified in the user prompt."},{role:"user",content:prompt}],response_format:{type:"json_object"}})});if(!res.ok)throw new Error(`${name} OpenRouter falló: ${res.status} ${await res.text()}`);const d=await res.json();return JSON.parse(d?.choices?.[0]?.message?.content||"{}")}catch(e){if(e instanceof DOMException&&e.name==="AbortError")throw new Error(`error_timeout: ${name}`);throw e}finally{clearTimeout(to)}}
 function envs(){const supabaseUrl=reqEnv("SUPABASE_URL"),supabaseKey=reqEnv("SUPABASE_SERVICE_ROLE_KEY");return{supabaseUrl,supabaseKey,openRouterKey:Deno.env.get("OPENROUTER_API_KEY")||""}}function reqEnv(n:string){const v=Deno.env.get(n);if(!v)throw new Error(`Secret requerido no configurado: ${n}`);return v}
+async function agentRetry(env:ReturnType<typeof envs>,name:string,prompt:string,modelEnv:string,timeoutMs:number,retries=1):Promise<J>{
+  try{return await agent(env,name,prompt,modelEnv,timeoutMs)}
+  catch(e){
+    if(retries>0&&err(e).includes("error_timeout")){
+      await new Promise(r=>setTimeout(r,3000));
+      return agentRetry(env,name,prompt,modelEnv,timeoutMs,retries-1);
+    }
+    throw e;
+  }
+}
 async function getOne<T>(env:ReturnType<typeof envs>,table:string,q:string,required=true){const r=await fetch(`${env.supabaseUrl}/rest/v1/${table}?${q}&select=*`,{headers:{apikey:env.supabaseKey,authorization:`Bearer ${env.supabaseKey}`,accept:"application/json"}});if(!r.ok)throw new Error(`Supabase select ${table} falló: ${r.status} ${await r.text()}`);const rows=await r.json();if(!rows?.length&&required)throw new Error(`error_validacion: no existe ${table}`);return rows?.[0]||null}
 async function patch(env:ReturnType<typeof envs>,table:string,id:string,body:J){const r=await fetch(`${env.supabaseUrl}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,{method:"PATCH",headers:{apikey:env.supabaseKey,authorization:`Bearer ${env.supabaseKey}`,"content-type":"application/json",prefer:"return=minimal"},body:JSON.stringify(body)});if(!r.ok)throw new Error(`Supabase update ${table} falló: ${r.status} ${await r.text()}`)}
 async function log(env:ReturnType<typeof envs>,run:string,id:string,step:string,agent:string,status:"started"|"ok"|"error"|"skipped"|"blocked"|"dry_run",out?:unknown,code?:string,msg?:string){await fetch(`${env.supabaseUrl}/rest/v1/content_generation_logs`,{method:"POST",headers:{apikey:env.supabaseKey,authorization:`Bearer ${env.supabaseKey}`,"content-type":"application/json",prefer:"return=minimal"},body:JSON.stringify({content_item_id:id,run_id:run,step,agent_or_skill:agent,status,operation_type:"text_generation",provider:"supabase-edge",output_snapshot:out||null,error_code:code||null,error_message:msg||null})}).catch(()=>{})}
@@ -764,13 +793,13 @@ function stringify(v:unknown){return !v?null:typeof v==="string"?v:JSON.stringif
 function list(v:unknown){if(Array.isArray(v))return [...new Set(v.map(String).map(s=>s.trim()).filter(Boolean))];if(typeof v==="string")return [...new Set(v.split(/[,;\n]/).map(s=>s.trim()).filter(Boolean))];return[]}
 function h2Details(v:unknown):J[]{const arr=Array.isArray(v)?v:Object.values(obj(v));return arr.map(x=>typeof x==="string"?{heading:x}:obj(x)).map(x=>({...x,heading:first(x.heading,x.h2,x.titulo,x.title)})).filter(x=>x.heading)}
 function faqs(v:unknown){const arr=Array.isArray(v)?v:Object.values(obj(v));return [...new Set(arr.map(x=>typeof x==="string"?x:first(obj(x).pregunta,obj(x).question,obj(x).h3,obj(x).titulo)).filter(Boolean) as string[])]}
-function facts(s:string|null){const t=s||"",set=new Set<string>();for(const m of t.matchAll(/\b\d+(?:[.,]\d+)?\s?(?:días|dias|años|anos|%|km|puntos?|minutos?|horas?|h|mxn|pesos?)\\b/gi))set.add(m[0]);for(const tok of["ADAS","BYD","MG","Chirey","JAC","Geely","SEV","Latin NCAP","Euro NCAP","Batería Blade","refacciones","garantía"])if(normalize(t).includes(normalize(tok)))set.add(tok);return Array.from(set).slice(0,30)}
+function facts(s:string|null){const t=s||"",set=new Set<string>();for(const m of t.matchAll(/\b\d+(?:[.,]\d+)?\s?(?:días|dias|años|anos|%|km|puntos?|minutos?|horas?|h|mxn|pesos?)\b/gi))set.add(m[0]);for(const tok of["ADAS","BYD","MG","Chirey","JAC","Geely","SEV","Latin NCAP","Euro NCAP","Batería Blade","refacciones","garantía"])if(normalize(t).includes(normalize(tok)))set.add(tok);return Array.from(set).slice(0,30)}
 function parseRange(v:string|null){if(!v)return{min:null,max:null};const nums=[...v.toLowerCase().replace(/[–—]/g,"-").replace(/,/g,"").matchAll(/\d{3,5}/g)].map(m=>Number(m[0]));if(nums.length>=2)return{min:Math.min(nums[0],nums[1]),max:Math.max(nums[0],nums[1])};if(nums.length===1)return{min:Math.round(nums[0]*.9),max:Math.round(nums[0]*1.1)};return{min:null,max:null}}
 function clean(h:string){return h.replace(/<script(?![\s\S]*?data-cab)(?![\s\S]*?data-fz)[\s\S]*?<\/script>/gi,"").replace(/(<(?!script)[^>]+?)\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,"$1").replace(/(?<!['"])javascript\s*:/gi,"");}
 function strip(h:string){return h.replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim()}
 function words(t:string){return t?t.split(/\s+/).filter(Boolean).length:0}
 function normalize(v:string){return String(v||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/<[^>]+>/g," ").replace(/[^a-z0-9.,\/\- ]+/g," ").replace(/\s+/g," ").trim()}
-function hasTag(html:string,tag:string,expected:string){const re=new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`,"gi"),e=normalize(expected);for(const m of html.matchAll(re))if(near(normalize(strip(m[1])),e))return true;return false}
+function hasTag(html:string,tag:string,expected:string){const re=new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`,'gi'),e=normalize(expected);for(const m of html.matchAll(re))if(near(normalize(strip(m[1])),e))return true;return false}
 function near(t:string,n:string){if(!n)return true;if(t.includes(n))return true;const ws=n.split(" ").filter(w=>w.length>2);if(ws.length<=2)return ws.every(w=>t.includes(w));return ws.filter(w=>t.includes(w)).length/ws.length>=.75}
 function esc(s:string){return s.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}
 function memory(html:string){const text=strip(html);return text.length>1800?text.slice(-1800):text}
