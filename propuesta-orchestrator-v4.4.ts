@@ -695,6 +695,8 @@ serve(async (req) => {
             footer_zone_enriched: true,
             footer_zone_cj_stages: Array.isArray((cjData as J).stages) ? ((cjData as J).stages as unknown[]).length : 0,
             footer_zone_el_decisions: Array.isArray((elData as J).key_editorial_decisions) ? ((elData as J).key_editorial_decisions as unknown[]).length : 0,
+            customer_journey: cjData,
+            editorial_logic: elData,
           }),
         });
 
