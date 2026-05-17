@@ -1,0 +1,47 @@
+# ============================================================================
+# Archivos que NUNCA deben subirse al repositorio.
+# ============================================================================
+
+# Variables de entorno locales con valores REALES
+.env
+.env.local
+.env.*.local
+*.env
+
+# IMPORTANTE: .env.example SÍ se sube (es la plantilla con placeholders)
+!.env.example
+
+# Backups locales con secretos (por si alguien los hace)
+*.secret
+*.secrets
+secrets.json
+credentials.json
+service-account*.json
+
+# Llaves privadas / certificados (jamás)
+*.pem
+*.key
+*.crt
+*.p12
+
+# Logs locales y artefactos
+*.log
+logs/
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+
+# Node / Deno (si se editan localmente)
+node_modules/
+.deno/
+deno.lock
+
+# Editores
+.vscode/
+.idea/
+*.iml
+
+# Outputs locales de pruebas (resultados de E2E, cuentas de prueba, etc.)
+test-output/
+output/

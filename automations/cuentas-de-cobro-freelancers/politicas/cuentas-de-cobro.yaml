@@ -1,0 +1,184 @@
+# ============================================================================
+# Política operativa de cuentas de cobro automáticas para freelancers
+# Versión machine-readable. Espejo de la política guardada en
+# `company_policies` con policy_type='freelancer_invoices'.
+# ============================================================================
+
+automation_key: cuentas-de-cobro-freelancers
+version: "1.0"
+language: es
+active: true
+
+modelo:
+  tipo: monthly_fixed
+  descripcion: >
+    Cada freelancer activo tiene un monto fijo mensual en USD configurado
+    en freelancer_invoice_settings. El sistema NO calcula por palabras ni
+    por horas: el monto se toma textual de la configuración al generar.
+
+generacion:
+  cuando: ultimo_dia_del_mes_menos_2
+  hora_bogota: "09:00"
+  zona_horaria: America/Bogota
+  cron_utc: "0 14 * * *"
+  funcion_runner: run_monthly_freelancer_invoice_generator
+  funcion_generadora: generate_monthly_freelancer_invoices
+  idempotente_por: [user_id, period_year, period_month]
+  filtro:
+    is_active: true
+    monthly_amount: ">0"
+
+estados_invoice:
+  - clave: draft
+    descripcion: Recién creada por el generador. Sin Google Doc.
+  - clave: sent
+    descripcion: Doc generado y aviso enviado. Esperando confirmación del freelancer.
+  - clave: acknowledged_by_writer
+    descripcion: El freelancer confirmó recepción. Esperando aprobación del admin.
+  - clave: rejected_by_writer
+    descripcion: El freelancer reportó observación con motivo obligatorio.
+  - clave: admin_approved
+    descripcion: El admin aprobó. Lista para pagar.
+  - clave: paid
+    descripcion: Pagada. Fin del flujo. Espejada en freelancer_payments.
+  - clave: cancelled
+    descripcion: Anulada por el admin.
+
+transiciones_permitidas:
+  draft:        [sent, cancelled]
+  sent:         [acknowledged_by_writer, rejected_by_writer, cancelled]
+  acknowledged: [admin_approved, cancelled]
+  rejected:     [sent, cancelled]      # admin resuelve y reabre
+  approved:     [paid, cancelled]
+  paid:         []                      # estado terminal
+  cancelled:    []                      # estado terminal
+
+canales_notificacion:
+  email:
+    proveedor: Mailjet
+    estado: activo
+    remitente_default: accesos@seolabagency.com
+    remitente_nombre: "SeoLab Agency — Cuentas de cobro"
+    secrets_requeridos: [MAILJET_API_KEY, MAILJET_SECRET_KEY]
+  slack_dm:
+    proveedor: Slack Web API
+    estado: encola_pero_no_envia
+    nota: Worker pendiente de construir (ver AREAS.md área C).
+  whatsapp:
+    proveedor: WAHA via boti-whatsapp-outbox-worker
+    estado: no_implementado
+    nota: Posible reutilización del worker existente.
+
+escalamiento:
+  funcion: escalate_pending_freelancer_invoices
+  cron: "0 15 * * *"
+  cron_descripcion: Diario 10:00 Bogotá
+  niveles:
+    - rango: "1-2"
+      cadencia_horas: 24
+    - rango: "3-4"
+      cadencia_horas: 48
+    - rango: "5+"
+      cadencia_horas: 72
+  nivel_critico: 5
+  comportamiento_critico: Considerar contacto manual al freelancer/admin.
+  reseteo_nivel: Cuando alguien confirma o aprueba, escalation_level vuelve a 0.
+
+prioridades_outbox:
+  invoice_sent:                 60
+  invoice_pending_approval:     70
+  invoice_approved:             50
+  invoice_rejected_by_writer:   90
+  invoice_reminder_writer:      "50 + escalation_level*10 (max 99)"
+  invoice_reminder_admin:       "60 + escalation_level*10 (max 99)"
+
+roles:
+  writer:
+    rol_supabase: authenticated
+    permite:
+      - SELECT freelancer_invoices WHERE user_id = auth.uid()
+      - acknowledge_freelancer_invoice
+      - reject_freelancer_invoice
+    no_permite:
+      - approve_freelancer_invoice
+      - mark_freelancer_invoice_paid
+      - INSERT/UPDATE directo a freelancer_invoices
+  admin:
+    agency_roles_aceptados:
+      - "General Director"
+      - "Director General"
+      - "KAM (Key Account Manager)"
+    permite:
+      - SELECT freelancer_invoices (todas)
+      - approve_freelancer_invoice
+      - mark_freelancer_invoice_paid
+      - UPDATE freelancer_invoice_settings
+  anonymous:
+    descripcion: >
+      Cuando el redactor pulsa el botón del correo sin estar logueado.
+    permite:
+      - acknowledge_freelancer_invoice (validado por token)
+      - reject_freelancer_invoice (validado por token)
+      - approve_freelancer_invoice (validado por token)
+
+tokens:
+  longitud: 32
+  formato: hex_sin_guiones
+  generador: "replace(gen_random_uuid()::text, '-', '')"
+  campos:
+    - writer_token   # confirmación / rechazo del redactor
+    - admin_token    # aprobación del admin
+
+google_doc:
+  carpeta_raiz_default: "SeoLab Cuentas de cobro"
+  estructura: "{root}/{full_name del freelancer}/{titulo}"
+  permiso: "anyone with link, reader"
+  secrets_requeridos:
+    - GOOGLE_CALENDAR_CLIENT_ID
+    - GOOGLE_CALENDAR_CLIENT_SECRET
+    - GOOGLE_DOCS_REFRESH_TOKEN
+
+vault_secrets:
+  - nombre: FREELANCER_INVOICE_INTERNAL_SECRET
+    uso: header x-internal-secret para invocar Edge Functions desde pg_cron
+  - nombre: FREELANCER_INVOICE_PROJECT_URL
+    uso: URL base del proyecto Supabase usada por net.http_post desde pg_cron
+
+functions_secrets:
+  obligatorios:
+    - MAILJET_API_KEY
+    - MAILJET_SECRET_KEY
+    - GOOGLE_CALENDAR_CLIENT_ID
+    - GOOGLE_CALENDAR_CLIENT_SECRET
+    - GOOGLE_DOCS_REFRESH_TOKEN
+    - FREELANCER_INVOICE_INTERNAL_SECRET
+  opcionales:
+    - FREELANCER_INVOICE_FROM_EMAIL
+    - FREELANCER_INVOICE_FROM_NAME
+    - FREELANCER_INVOICE_APP_BASE_URL
+    - FREELANCER_INVOICE_DRIVE_ROOT
+
+reglas_no_negociables:
+  - Los secretos nunca van en código. Vault + Functions Secrets.
+  - Para cambiar estado de una cuenta, usar siempre las RPCs (nunca UPDATE directo).
+  - mark_freelancer_invoice_paid exige status = admin_approved.
+  - El motivo de rechazo es obligatorio.
+  - El generator es idempotente por (user_id, year, month).
+  - Las notificaciones usan dedupe_key único.
+  - Solo se generan cuentas el último día del mes − 2.
+  - Para pruebas con correos reales, override notification_email en settings (no editar users.email).
+
+decisiones_pendientes:
+  - id: monto_mensual_por_freelancer
+    estado: por_definir_por_admin
+  - id: admin_responsable_por_freelancer
+    estado: por_definir_por_admin
+  - id: politica_tributaria
+    estado: por_definir
+    opciones: [retencion_automatica, bruto_sin_retencion, configurable_por_pais]
+  - id: integracion_contable
+    estado: por_definir
+    opciones: [quickbooks, alegra, siigo, csv_manual, webhook_generico]
+  - id: soporte_multimoneda
+    estado: hoy_solo_usd
+    nota: La columna currency existe pero todos los flujos asumen USD.
