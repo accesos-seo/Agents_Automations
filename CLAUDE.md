@@ -15,13 +15,38 @@ Agencia de SEO y automatizaciones (SEO Lab Agency). Trabaja con múltiples proye
 
 ## Herramientas globales disponibles
 
-Estas credenciales están en `.env.shared` en la carpeta local. Si no están disponibles, pedirlas antes de operar.
-
 | Variable | Plataforma | Para qué sirve |
 |---|---|---|
 | `N8N_TOKEN` | N8N | Gestionar flujos de automatización |
 | `VERCEL_TOKEN` | Vercel | Deploy de proyectos frontend |
 | `OPENROUTER_API_KEY` | OpenRouter | Acceso a modelos de IA en automatizaciones |
+| `<PROYECTO>_SUPABASE_URL` + `<PROYECTO>_SERVICE_KEY` | Supabase | Acceso directo a la BD de cada proyecto |
+| `AHREFS_API_TOKEN` | Ahrefs | Investigación SEO (usado en seo-content-swarm-engine) |
+
+### Dónde viven las credenciales según el entorno
+
+- **App de escritorio (local Windows):** archivo `.env.shared` en la carpeta local. Cargar con `source .env.shared` antes de operar.
+- **Claude Code on web (contenedor remoto):** **NO existe `.env.shared`** porque el contenedor solo tiene lo que está en git. Las credenciales se inyectan vía:
+  1. **Environment variables del Environment** (recomendado, persistente entre sesiones)
+  2. **MCP de Supabase** con PAT de la org correcta
+  3. **`.env.local` en el contenedor** (efímero, solo esa sesión, gitignored)
+
+> Si una credencial no aparece como env var en una sesión web, **pedirla al usuario** y guardarla en `.env.local` (gitignored). Avisar al usuario que la solución permanente es agregarla al Environment vía panel de Claude Code on web.
+
+### Restricciones de red en Claude Code on web
+
+El network policy de cada Environment es restrictivo por default. Para este proyecto requerimos en la allowlist:
+
+| Host | Para qué |
+|---|---|
+| `*.supabase.co` | REST + Postgres + Storage de los 6 proyectos Supabase |
+| `api.ahrefs.com` | Investigación SEO (Fase 1 de seo-content-swarm-engine) |
+| `api.openrouter.ai` | Modelos IA para agentes |
+| `*.n8n.cloud` o `estancias-atlas-n8n.heh8a3.easypanel.host` | n8n workflows |
+
+Si una llamada externa devuelve `403 Host not in allowlist`, pedir al usuario que agregue el host al Network Policy del Environment.
+
+> Documentación: https://code.claude.com/docs/en/claude-code-on-the-web
 
 ---
 

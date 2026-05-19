@@ -101,6 +101,43 @@ Yo la uso con `psql` o `pg` desde el contenedor para ejecutar las queries de Fas
 
 ---
 
+## ⚠️ Restricción de red descubierta (2026-05-19)
+
+Aunque tengas la credencial inyectada, el **network policy del Environment de Claude Code on web bloquea por default los hosts externos**. Confirmado en esta sesión:
+
+```bash
+curl https://stjugsrkrweakvzmizpq.supabase.co/rest/v1/
+→ HTTP 403 "Host not in allowlist"
+```
+
+### Hosts que hay que agregar a la allowlist del Environment
+
+| Host | Para qué |
+|---|---|
+| `*.supabase.co` | Todos los proyectos Supabase (Light_House, Swarm Agentes MD, etc.) |
+| `api.ahrefs.com` | Llamadas Ahrefs en Fase 1 |
+| `api.openrouter.ai` | Si Claude llama modelos IA directo (no aplica al pipeline en producción, pero útil para pruebas) |
+| `estancias-atlas-n8n.heh8a3.easypanel.host` | Webhook n8n A |
+
+**Cómo agregarlos:** panel del Environment de Claude Code on web → Network Policy → agregar hosts. Doc: https://code.claude.com/docs/en/claude-code-on-the-web
+
+Hasta que esto se haga, **ninguna de las 4 opciones de conexión funciona** desde el contenedor remoto — todas chocan con el proxy de red. Las opciones siguen siendo válidas para describir cómo conectar; lo único que falta es desbloquear el host.
+
+---
+
+## Estado actual de configuración (2026-05-19)
+
+| Item | Estado |
+|---|---|
+| Credenciales Light_House en `.env.local` del contenedor | ✅ Inyectadas esta sesión (efímeras) |
+| Network policy permite `*.supabase.co` | ❌ Bloqueado — acción pendiente del usuario |
+| Env vars persistentes en el Environment | ❌ No configuradas — acción pendiente del usuario |
+| MCP de Supabase con scope sobre la org correcta | ❌ Hoy solo ve "Managers Ascent" |
+
+**Próxima sesión podrá operar directo si:** se configura Opción 4 (env vars del Environment) + se agrega `*.supabase.co` y `api.ahrefs.com` al network policy.
+
+---
+
 ## Lo que necesito de ti (sea cual sea la opción)
 
 Para Fase 0:

@@ -1,8 +1,12 @@
 # Credenciales — nunca subir a GitHub
 .env
 .env.local
+.env.shared
 .env.production
 .env.*.local
+**/.env
+**/.env.local
+**/.env.shared
 
 # Sistema operativo
 .DS_Store
