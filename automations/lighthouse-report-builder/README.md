@@ -40,23 +40,42 @@ Frontend ya tiene datos → /seo/analisis/<id>/informe carga normalmente
 | 5 | `recovery_plan` | Plan en fases con métricas de éxito |
 | 6 | `appendix` | IDs técnicos + metodología + limitaciones |
 
-## Despliegue
+## Despliegue completo (las 4 edge functions)
 
 ```bash
-# 1. Linkear el proyecto
+# 1. Linkear el proyecto Light_House
 supabase link --project-ref stjugsrkrweakvzmizpq
 
-# 2. Configurar secretos
+# 2. Configurar TODOS los secretos de una vez
 supabase secrets set \
-  OPENROUTER_API_KEY="..." \
-  LIGHTHOUSE_REPORT_INTERNAL_SECRET="genera-uno-largo" \
-  LIGHTHOUSE_REPORT_MODEL="anthropic/claude-sonnet-4"
+  OPENROUTER_API_KEY="sk-or-v1-..." \
+  LIGHTHOUSE_REPORT_INTERNAL_SECRET="$(openssl rand -hex 32)" \
+  LIGHTHOUSE_REPORT_MODEL="anthropic/claude-sonnet-4" \
+  GOOGLE_CALENDAR_CLIENT_ID="..." \
+  GOOGLE_CALENDAR_CLIENT_SECRET="..." \
+  GOOGLE_DOCS_REFRESH_TOKEN="..." \
+  SLACK_BOT_TOKEN="xoxb-..." \
+  LIGHTHOUSE_SLACK_CHANNEL="informes-seo" \
+  LIGHTHOUSE_DRIVE_ROOT="SeoLab Informes SEO"
 
-# 3. Deploy
+# 3. Deploy de las 4 funciones (en este orden por dependencia lógica)
 supabase functions deploy lighthouse-report-builder --no-verify-jwt
+supabase functions deploy lighthouse-google-docs-exporter --no-verify-jwt
+supabase functions deploy lighthouse-slack-notifier --no-verify-jwt
+supabase functions deploy lighthouse-outbox-worker --no-verify-jwt
+
+# 4. Cargar secretos en Vault para el watchdog SQL
+# (Desde el SQL Editor del Dashboard o vía psql:)
+# SELECT vault.create_secret('<el-mismo-INTERNAL_SECRET>', 'LIGHTHOUSE_REPORT_INTERNAL_SECRET');
+# SELECT vault.create_secret('https://stjugsrkrweakvzmizpq.supabase.co', 'LIGHTHOUSE_PROJECT_URL');
+
+# 5. Activar los cron jobs (después de verificar que las 4 functions responden)
+# En SQL Editor:
+# SELECT cron.schedule('lighthouse-watchdog-full', '*/2 * * * *', $$ SELECT ahrefs_web_analysis.watchdog_full_pipeline(); $$);
+# SELECT cron.schedule('lighthouse-outbox-worker', '*/30 * * * * *', $$ SELECT net.http_post(...); $$);
 ```
 
-Ver `SECRETS.md` para detalle de cada variable.
+Ver `SECRETS.md` para detalle de cada variable y cómo obtener cada token.
 
 ## Invocación manual (testing / backfill)
 
@@ -150,9 +169,27 @@ SeoLab Informes SEO/
   └── ...
 ```
 
-## Edge Function: `lighthouse-slack-notifier` (agent_7)
+## Edge Function: `lighthouse-slack-notifier` (agent_7) + `lighthouse-outbox-worker`
 
-Última pieza del pipeline. Cuando el Google Doc está listo en Drive (file_path en `reports`), este agent envía un mensaje por Slack:
+Cuando el Google Doc está listo, el flujo de notificación es **outbox-driven** (mismo patrón que `gbp-post-generator`, `client_requests_attention`, `freelancer_invoice`):
+
+```
+1. lighthouse-slack-notifier
+   ├─ inserta 1 row en notifications_outbox (DM al especialista, si tiene slack_id)
+   ├─ inserta 1 row en notifications_outbox (canal #informes-seo)
+   └─ marca reports.published_at = NOW()
+
+2. lighthouse-outbox-worker (corre cada 30s vía pg_cron)
+   ├─ claim filas pendientes con source='lighthouse_report' (lock pattern)
+   ├─ construye Block Kit desde payload
+   ├─ POST a Slack chat.postMessage
+   ├─ status='sent' + provider_message_id
+   └─ on error: backoff exponencial 2/4/8 min, max 3 attempts
+```
+
+**¿Por qué dos edge functions y no una?** El notifier corre **una vez por informe** (idempotente), el worker corre **continuamente** procesando pendientes. Si Slack está caído por 10 min, los reports no se pierden — el worker los reintenta. Es el patrón estándar de la plataforma.
+
+### Destinos
 
 - **DM directo al especialista** (resuelto vía `public.users.slack_id` del `created_by`)
 - **Copia al canal del equipo** (`#informes-seo` por default, configurable)

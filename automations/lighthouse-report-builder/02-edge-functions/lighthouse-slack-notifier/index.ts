@@ -1,28 +1,29 @@
 /**
- * lighthouse-slack-notifier (agent_7) — v1
+ * lighthouse-slack-notifier (agent_7) — v2 (refactor a outbox)
  *
  * Última pieza del pipeline Lighthouse: una vez que el Google Doc fue creado
- * por `lighthouse-google-docs-exporter`, este agent envía un mensaje por Slack
- * al especialista responsable (DM) + copia al canal del equipo.
+ * por `lighthouse-google-docs-exporter`, este agent encola UN row por destino
+ * en `public.notifications_outbox` para que `lighthouse-outbox-worker` los
+ * procese.
+ *
+ * Este enfoque sigue el patrón de la plataforma (mismo modelo que
+ * `gbp-post-generator`, `client_requests_attention`, `freelancer_invoice`):
+ * cada source produce rows en outbox, un worker dedicado los consume.
  *
  * Disparadores:
  *   1. Invocación HTTP desde `lighthouse-google-docs-exporter` al terminar.
- *   2. Invocación manual con `x-internal-secret` para reenviar.
+ *   2. Invocación manual con `x-internal-secret` para reencolar.
  *   3. Watchdog automático (reports con file_path pero sin published_at).
  *
  * Input: POST con JSON { report_id: uuid, resend?: boolean }
  *
  * Output:
- *   { ok: true, sent_to: { specialist_dm, channel }, message_ts }
+ *   { ok: true, enqueued: [{ target_type, channel_id, dedupe_key }] }
  *
- * Secretos requeridos (Supabase Functions):
+ * Secretos requeridos:
  *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  (auto)
- *   SLACK_BOT_TOKEN                          (xoxb-... con chat:write + chat:write.public)
  *   LIGHTHOUSE_REPORT_INTERNAL_SECRET
  *   LIGHTHOUSE_SLACK_CHANNEL                 (opcional, default "informes-seo")
- *
- * Despliegue:
- *   supabase functions deploy lighthouse-slack-notifier --no-verify-jwt
  */
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
@@ -35,11 +36,10 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const INTERNAL_SECRET = (Deno.env.get("LIGHTHOUSE_REPORT_INTERNAL_SECRET") || "").trim();
-const SLACK_BOT_TOKEN = (Deno.env.get("SLACK_BOT_TOKEN") || "").trim();
 const TEAM_CHANNEL = (Deno.env.get("LIGHTHOUSE_SLACK_CHANNEL") || "informes-seo").trim().replace(/^#/, "");
 
 const SCHEMA = "ahrefs_web_analysis";
-const AGENT_NAME = "agent_7";
+const OUTBOX_SOURCE = "lighthouse_report";
 
 type ReportRow = {
   id: string;
@@ -75,11 +75,12 @@ type Diagnostic = {
   findings_count: number | null;
 };
 
-type SendResult = {
-  channel: string;
-  ts: string | null;
-  fallback_used: boolean;
-};
+function sanitizeSlackId(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const cleaned = raw.replace(/[\s\r\n]+/g, "").trim();
+  if (!/^[UCW][A-Z0-9]{8,}$/i.test(cleaned)) return null;
+  return cleaned;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Supabase helpers
@@ -111,6 +112,22 @@ async function pgPatch(path: string, body: unknown, schema = SCHEMA): Promise<vo
   if (!res.ok) throw new Error(`PostgREST PATCH ${path}: ${res.status} ${await res.text()}`);
 }
 
+async function pgInsertOutbox(row: Record<string, unknown>): Promise<void> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/notifications_outbox`, {
+    method: "POST",
+    headers: {
+      apikey: SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal,resolution=ignore-duplicates",
+    },
+    body: JSON.stringify(row),
+  });
+  if (!res.ok && res.status !== 409) {
+    throw new Error(`Outbox insert: ${res.status} ${await res.text()}`);
+  }
+}
+
 async function emitEvent(run_id: string, type: string, message: string, payload: Record<string, unknown>) {
   await fetch(`${SUPABASE_URL}/rest/v1/analysis_run_events`, {
     method: "POST",
@@ -126,31 +143,6 @@ async function emitEvent(run_id: string, type: string, message: string, payload:
       message, payload,
     }),
   }).catch((e) => console.error("emitEvent failed:", e));
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Slack helpers
-// ─────────────────────────────────────────────────────────────────────────────
-function sanitizeSlackId(raw: string | null | undefined): string | null {
-  // slack_id viene mal formateado en algunos rows (newlines, espacios)
-  if (!raw) return null;
-  const cleaned = raw.replace(/[\s\r\n]+/g, "").trim();
-  // Validación mínima: debe parecer un ID de Slack (U... o C... + alfanuméricos)
-  if (!/^[UCW][A-Z0-9]{8,}$/i.test(cleaned)) return null;
-  return cleaned;
-}
-
-async function slackPost(method: string, body: Record<string, unknown>): Promise<{ ok: boolean; ts?: string; error?: string; channel?: string }> {
-  if (!SLACK_BOT_TOKEN) throw new Error("SLACK_BOT_TOKEN missing");
-  const res = await fetch(`https://slack.com/api/${method}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${SLACK_BOT_TOKEN}`,
-      "Content-Type": "application/json; charset=utf-8",
-    },
-    body: JSON.stringify(body),
-  });
-  return await res.json();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -188,123 +180,11 @@ async function loadDiagnostic(client_id: string): Promise<Diagnostic | null> {
   return rows[0] ?? null;
 }
 
-async function loadClientName(client_id: string, domain: string): Promise<string> {
+async function loadClientName(domain: string): Promise<string> {
   const rows = await pgGet<Array<{ client_name: string | null }>>(
     `analysis_requests?select=client_name&request_payload->>domain=eq.${domain}&order=created_at.desc&limit=1`
   );
   return rows[0]?.client_name || domain;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Block Kit message builder
-// ─────────────────────────────────────────────────────────────────────────────
-function fmtNumber(n: number | null | undefined): string {
-  if (n === null || n === undefined) return "—";
-  return n.toLocaleString("es-CO");
-}
-
-function riskEmoji(level: string | null): string {
-  switch (level) {
-    case "critical": return ":red_circle:";
-    case "high": return ":large_orange_circle:";
-    case "medium": return ":large_yellow_circle:";
-    case "low": return ":large_green_circle:";
-    default: return ":white_circle:";
-  }
-}
-
-function buildBlocks(args: {
-  client_name: string;
-  domain: string;
-  doc_url: string;
-  is_partial: boolean;
-  specialist_name: string | null;
-  metrics: SiteOverview | null;
-  diagnostic: Diagnostic | null;
-  report_version: number;
-  is_dm: boolean;
-}): Array<Record<string, unknown>> {
-  const { client_name, domain, doc_url, is_partial, specialist_name, metrics, diagnostic, report_version, is_dm } = args;
-
-  const headerText = is_partial
-    ? `:warning: Informe SEO parcial listo: ${client_name}`
-    : `:bar_chart: Informe SEO listo: ${client_name}`;
-
-  const greeting = is_dm
-    ? `Hola ${specialist_name?.split(" ")[0] || ""}, tu análisis de *${client_name}* terminó.`
-    : `Nuevo informe generado por ${specialist_name || "el equipo"} para *${client_name}*.`;
-
-  const fields: Array<{ type: string; text: string }> = [
-    { type: "mrkdwn", text: `*Dominio:*\n${domain}` },
-    { type: "mrkdwn", text: `*Versión:*\nv${report_version}` },
-  ];
-
-  if (metrics) {
-    if (metrics.organic_traffic) {
-      fields.push({ type: "mrkdwn", text: `*Tráfico estimado:*\n${fmtNumber(metrics.organic_traffic)}/mes` });
-    }
-    if (metrics.traffic_value) {
-      fields.push({ type: "mrkdwn", text: `*Valor de tráfico:*\n$${fmtNumber(Math.round(metrics.traffic_value))} USD/mes` });
-    }
-  }
-
-  if (diagnostic?.overall_risk_level) {
-    fields.push({
-      type: "mrkdwn",
-      text: `*Risk level:*\n${riskEmoji(diagnostic.overall_risk_level)} ${diagnostic.overall_risk_level}${diagnostic.risk_score ? ` (${diagnostic.risk_score}/1000)` : ""}`,
-    });
-  }
-  if (diagnostic?.findings_count) {
-    fields.push({ type: "mrkdwn", text: `*Findings:*\n${diagnostic.findings_count} detectados` });
-  }
-
-  const blocks: Array<Record<string, unknown>> = [
-    {
-      type: "header",
-      text: { type: "plain_text", text: headerText, emoji: true },
-    },
-    {
-      type: "section",
-      text: { type: "mrkdwn", text: greeting },
-    },
-    {
-      type: "section",
-      fields: fields.slice(0, 10), // Slack máximo 10 fields
-    },
-  ];
-
-  if (is_partial) {
-    blocks.push({
-      type: "context",
-      elements: [{
-        type: "mrkdwn",
-        text: ":warning: _Este informe se generó en modo parcial porque Ahrefs devolvió datos insuficientes. Revisá el detalle dentro del documento._",
-      }],
-    });
-  }
-
-  blocks.push({
-    type: "actions",
-    elements: [
-      {
-        type: "button",
-        text: { type: "plain_text", text: ":page_facing_up: Abrir en Google Docs", emoji: true },
-        url: doc_url,
-        style: "primary",
-        action_id: "open_doc",
-      },
-    ],
-  });
-
-  blocks.push({
-    type: "context",
-    elements: [{
-      type: "mrkdwn",
-      text: `_SeoLab Agency · Lighthouse · ${new Date().toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })}_`,
-    }],
-  });
-
-  return blocks;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -322,17 +202,15 @@ async function handle(req: Request): Promise<Response> {
 
   const report = await loadReport(body.report_id);
 
-  // Pre-checks
   if (!report.file_path) {
     return new Response(JSON.stringify({
       error: "report has no file_path. Run lighthouse-google-docs-exporter first.",
     }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  // Idempotencia: si ya fue published y no se forzó resend, skip
   if (report.published_at && !body.resend) {
     return new Response(JSON.stringify({
-      ok: true, skipped: true, reason: "already published",
+      ok: true, skipped: true, reason: "already enqueued",
       published_at: report.published_at,
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
@@ -340,93 +218,89 @@ async function handle(req: Request): Promise<Response> {
   const specialist = await loadSpecialist(report.created_by);
   const metrics = await loadSiteOverview(report.client_id);
   const diagnostic = await loadDiagnostic(report.client_id);
-  const client_name = await loadClientName(report.client_id, report.domain);
-
+  const client_name = await loadClientName(report.domain);
   const specialist_slack = sanitizeSlackId(specialist?.slack_id);
   const is_partial = report.report_status === "generated_partial";
 
-  await emitEvent(report.run_id, "agent_started", "agent_7 iniciando envío Slack", {
+  // Payload compartido (el worker arma Block Kit a partir de esto)
+  const sharedPayload = {
     report_id: report.id,
-    specialist_id: specialist?.id ?? null,
-    specialist_slack_resolved: specialist_slack !== null,
+    run_id: report.run_id,
+    client_id: report.client_id,
+    client_name,
+    domain: report.domain,
+    doc_url: report.file_path,
+    report_version: report.report_version,
     is_partial,
-  });
+    specialist: specialist ? {
+      id: specialist.id,
+      full_name: specialist.full_name,
+      email: specialist.email,
+    } : null,
+    metrics,
+    diagnostic,
+  };
 
-  const sent: SendResult[] = [];
-  let dm_error: string | null = null;
+  const enqueued: Array<{ target_type: string; channel_id: string; dedupe_key: string }> = [];
+  const dedupeBase = body.resend
+    ? `${OUTBOX_SOURCE}:${report.id}:v${report.report_version}:${Date.now()}`
+    : `${OUTBOX_SOURCE}:${report.id}:v${report.report_version}`;
 
-  // 1. DM al especialista (si tiene slack_id válido)
+  // 1. DM al especialista (solo si tiene slack_id válido)
   if (specialist_slack) {
-    const dmBlocks = buildBlocks({
-      client_name, domain: report.domain, doc_url: report.file_path,
-      is_partial, specialist_name: specialist?.full_name ?? null,
-      metrics, diagnostic, report_version: report.report_version,
-      is_dm: true,
+    const dedupe_key = `${dedupeBase}:dm`;
+    await pgInsertOutbox({
+      source: OUTBOX_SOURCE,
+      user_id: specialist?.id ?? null,
+      target_type: "slack_user",
+      target_id: report.id,
+      channel_id: specialist_slack,
+      type: is_partial ? "report_ready_partial" : "report_ready",
+      payload: { ...sharedPayload, is_dm: true },
+      priority: 70,
+      status: "pending",
+      dedupe_key,
+      scheduled_for: new Date().toISOString(),
     });
-    const dmRes = await slackPost("chat.postMessage", {
-      channel: specialist_slack,
-      blocks: dmBlocks,
-      text: `Informe SEO listo: ${client_name}`,
-      unfurl_links: false,
-    });
-    if (dmRes.ok) {
-      sent.push({ channel: specialist_slack, ts: dmRes.ts ?? null, fallback_used: false });
-    } else {
-      dm_error = dmRes.error ?? "unknown";
-      console.warn(`Slack DM failed for ${specialist_slack}: ${dm_error}`);
-    }
+    enqueued.push({ target_type: "slack_user", channel_id: specialist_slack, dedupe_key });
   }
 
-  // 2. Copia al canal del equipo (siempre, salvo que sea fallback puro y ya fue al canal)
-  const channelBlocks = buildBlocks({
-    client_name, domain: report.domain, doc_url: report.file_path,
-    is_partial, specialist_name: specialist?.full_name ?? null,
-    metrics, diagnostic, report_version: report.report_version,
-    is_dm: false,
+  // 2. Canal del equipo (siempre)
+  const channelDedupeKey = `${dedupeBase}:channel`;
+  await pgInsertOutbox({
+    source: OUTBOX_SOURCE,
+    user_id: null,
+    target_type: "slack_channel",
+    target_id: report.id,
+    channel_id: TEAM_CHANNEL,
+    type: is_partial ? "report_ready_partial" : "report_ready",
+    payload: { ...sharedPayload, is_dm: false },
+    priority: 70,
+    status: "pending",
+    dedupe_key: channelDedupeKey,
+    scheduled_for: new Date().toISOString(),
   });
-  const channelRes = await slackPost("chat.postMessage", {
-    channel: TEAM_CHANNEL,
-    blocks: channelBlocks,
-    text: `Informe SEO listo: ${client_name} (por ${specialist?.full_name || "equipo"})`,
-    unfurl_links: false,
-  });
-  if (channelRes.ok) {
-    sent.push({
-      channel: TEAM_CHANNEL,
-      ts: channelRes.ts ?? null,
-      fallback_used: !specialist_slack, // si no había DM válido, este canal cumple rol fallback
-    });
-  } else {
-    console.warn(`Slack channel post failed for ${TEAM_CHANNEL}: ${channelRes.error}`);
-  }
+  enqueued.push({ target_type: "slack_channel", channel_id: TEAM_CHANNEL, dedupe_key: channelDedupeKey });
 
-  if (sent.length === 0) {
-    await emitEvent(report.run_id, "agent_failed", "Slack notification failed en todos los destinos", {
-      report_id: report.id, dm_error, channel_error: channelRes.error,
-    });
-    return new Response(JSON.stringify({
-      error: "Slack notification failed on all destinations",
-      dm_error, channel_error: channelRes.error,
-    }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
-
-  // Marcar como publicado
+  // Marcar como publicado (encolado). El worker hará el envío real.
   await pgPatch(`reports?id=eq.${report.id}`, {
     published_at: new Date().toISOString(),
   });
 
   await emitEvent(report.run_id, "agent_completed",
-    is_partial ? "Informe parcial notificado por Slack" : "Informe notificado por Slack",
+    is_partial ? "Informe parcial encolado en outbox" : "Informe encolado en outbox",
     {
-      report_id: report.id, sent_to: sent, specialist_name: specialist?.full_name ?? null,
-      dm_resolved: specialist_slack !== null, dm_error,
+      report_id: report.id,
+      enqueued_count: enqueued.length,
+      destinations: enqueued.map(e => `${e.target_type}:${e.channel_id}`),
+      specialist_dm_resolved: specialist_slack !== null,
     }
   );
 
   return new Response(JSON.stringify({
     ok: true,
     report_id: report.id,
-    sent_to: sent,
+    enqueued,
     specialist_dm_resolved: specialist_slack !== null,
     is_partial,
     published_at: new Date().toISOString(),
@@ -435,23 +309,16 @@ async function handle(req: Request): Promise<Response> {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-
   if (!INTERNAL_SECRET) {
-    return new Response(JSON.stringify({
-      error: "server_misconfigured: LIGHTHOUSE_REPORT_INTERNAL_SECRET missing",
-    }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "server_misconfigured" }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
   if ((req.headers.get("x-internal-secret") || "") !== INTERNAL_SECRET) {
     return new Response(JSON.stringify({ error: "forbidden" }), {
       status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-  if (!SLACK_BOT_TOKEN) {
-    return new Response(JSON.stringify({
-      error: "server_misconfigured: SLACK_BOT_TOKEN missing",
-    }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
-
   try {
     return await handle(req);
   } catch (err) {
