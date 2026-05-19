@@ -1,0 +1,70 @@
+{
+  "_comment": "PARCHE para corregir el bug de cross-contamination de brand_contract en n8n A. Reemplaza el nodo que carga el brand_contract con uno que filtra correctamente por brand_slug del content_item. Aplicar DESPUÉS de ejecutar 03-brand-contracts-migration.sql en Supabase Light_House.",
+  "_version": "1.0.0-bugfix",
+  "_bug_fixed": "brand_contract de vera-bet aplicado a artículos de otras marcas",
+  "_apply_to_workflow": "8iZcC4mGSFWUlOAc",
+
+  "_instructions": [
+    "1. Ejecutar sql/03-brand-contracts-migration.sql en Supabase Light_House (dashboard SQL editor).",
+    "2. Verificar que la tabla brand_contracts tiene 2 filas: vera-bet y cassino-bet.",
+    "3. En n8n, abrir workflow 8iZcC4mGSFWUlOAc.",
+    "4. Buscar el nodo actual que asigna brand_contract (probablemente un nodo HTTP Request o Code que devuelve brand_contract con brand_slug fijo).",
+    "5. Reemplazar ese nodo con el nodo 'Obtener brand_contract por slug' de este archivo.",
+    "6. Conectar la salida del nodo nuevo donde estaba la salida del nodo anterior.",
+    "7. En el nodo Code 'Construir brand_contract desde RPC', ajustar el campo que lee el brand_slug del payload si difiere de 'db_record.brand_slug'.",
+    "8. Probar con un artículo de vera-bet y otro de cassino-bet para confirmar que cada uno recibe su propio contrato.",
+    "9. Probar con un artículo de doug-construction: debe recibir contrato null y el fallback genérico."
+  ],
+
+  "nodes": [
+    {
+      "id": "http-get-brand-contract",
+      "name": "Obtener brand_contract por slug",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/get_brand_contract",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"p_brand_slug\": \"{{ ($json.db_record && $json.db_record.brand_slug) || $json.brand_slug || '' }}\"\n}",
+        "options": { "timeout": 5000 }
+      }
+    },
+    {
+      "id": "code-merge-brand-contract",
+      "name": "Construir brand_contract desde RPC",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [620, 0],
+      "parameters": {
+        "jsCode": "// Toma la respuesta de get_brand_contract y construye el brand_contract\n// en el mismo formato que el pipeline espera.\n// Si el RPC retornó NULL (marca sin contrato), usa un contrato genérico.\n\nconst rpcResult = $input.first().json;\nconst prevItem = $('Obtener brand_contract por slug').first().json;\n\n// Detectar si el RPC falló o devolvió null\nconst contractData = (rpcResult && typeof rpcResult === 'object' && rpcResult.brand_slug)\n  ? rpcResult\n  : null;\n\nconst brand_slug = contractData && contractData.brand_slug\n  || ($('Nodo anterior del flujo').first().json.db_record && $('Nodo anterior del flujo').first().json.db_record.brand_slug)\n  || 'desconocido';\n\n// Contrato genérico de fallback (cuando la marca no tiene definición en brand_contracts)\nconst genericContract = {\n  brand_slug,\n  brand_name: brand_slug,\n  language: 'pt',\n  market: 'pt-BR',\n  branded_products: [],\n  forbidden_competitors: [\n    'Blaze', 'Stake', 'Betano', '1xBet', 'F12Bet', 'KTO',\n    'Estrela Bet', 'Pixbet', 'Sportingbet', 'Superbet',\n    'Novibet', 'BetMGM', 'BetBoom', 'bet365', 'Betnacional', 'Aposta Ganha'\n  ],\n  writing_rules: [\n    'Nunca mencionar concorrentes',\n    'Mínimo 2 menções à marca por artigo'\n  ],\n  contract_version: 'generic-fallback',\n  _warning: 'Marca sem brand_contract definido em brand_contracts. Contrato genérico aplicado.'\n};\n\nconst brand_contract = contractData || genericContract;\n\n// Inyectar en el item del flujo preservando todos los campos anteriores\nconst anteriorItem = $('Nodo anterior del flujo').first().json;\nreturn [{\n  json: {\n    ...anteriorItem,\n    brief_final: {\n      ...(anteriorItem.brief_final || {}),\n      brand_contract  // sobreescribe el brand_contract con el correcto\n    }\n  }\n}];"
+      }
+    }
+  ],
+
+  "_how_to_identify_broken_node": {
+    "description": "El nodo roto en n8n A probablemente tiene una de estas características:",
+    "signs": [
+      "Es un nodo HTTP Request que consulta Supabase sin WHERE brand_slug = $variable",
+      "Es un nodo Code que devuelve un brand_contract con brand_slug hardcodeado ('vera-bet')",
+      "Es un nodo Supabase que hace SELECT * FROM alguna_tabla sin filtro",
+      "Su output tiene siempre el mismo brand_slug sin importar qué content_item disparó el flujo"
+    ],
+    "fix": "Reemplazar la consulta con una llamada a la función RPC get_brand_contract(p_brand_slug) pasando el brand_slug del content_item actual (viene de db_record.brand_slug)"
+  },
+
+  "_naming_note": "El nodo 'Nodo anterior del flujo' en el jsCode debe cambiarse por el nombre real del nodo previo en el workflow de n8n A. Ese es el nodo que produce el payload con db_record.brand_slug."
+}
