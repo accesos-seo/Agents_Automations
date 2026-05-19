@@ -1,8 +1,15 @@
 {
-  "_comment": "Bloque de nodos Ahrefs para insertar al final del workflow n8n A. Importar en n8n vía clipboard o 'Import from File'. Después de importar: (1) conectar entrada al último nodo del flujo existente; (2) conectar salida al 'Respond to Webhook'; (3) configurar credenciales HTTP Header Auth para Ahrefs y Supabase service role.",
-  "_version": "1.0.0-mvp",
+  "_comment": "Bloque de nodos Ahrefs para insertar al final del workflow n8n A. Importar en n8n vía clipboard o 'Import from File'. Después de importar: (1) conectar entrada al último nodo del flujo existente; (2) conectar salida al 'Respond to Webhook'; (3) configurar credenciales HTTP Header Auth para Ahrefs y Supabase service role. CAMPO CORRECTO: db_record.main_keyword (no target_keyword). LANGUAGE: db_record.language = 'en'|'pt'|'es' (no locale). BRAND_SLUG: usar db_record.brand_slug (brief_final.brand_contract.brand_slug tiene bug de cross-contamination conocido).",
+  "_version": "1.1.0-mvp",
   "_pipeline_phase": "fase-1-mvp",
   "_brand_piloto": "armor-corp",
+  "_payload_mapping": {
+    "keyword": "db_record.main_keyword",
+    "language": "db_record.language (en|pt|es)",
+    "brand_slug": "db_record.brand_slug",
+    "content_item_id": "db_record.id",
+    "brief_data_structure": "{ brief_final, db_record, sanitization_report } — el objeto raíz del payload IS brief_data"
+  },
   "name": "Ahrefs Research Block",
   "nodes": [
     {
@@ -12,7 +19,7 @@
           "conditions": [
             {
               "id": "brand-piloto-only",
-              "leftValue": "={{ $json.brand_slug }}",
+              "leftValue": "={{ ($json.db_record && $json.db_record.brand_slug) || $json.brand_slug }}",
               "rightValue": "armor-corp",
               "operator": { "type": "string", "operation": "equals" }
             }
@@ -28,7 +35,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Mapea locale a country_code de Ahrefs y prepara el contexto compartido\nconst LOCALE_TO_COUNTRY = {\n  'es-MX': 'mx',\n  'es-ES': 'es',\n  'es-AR': 'ar',\n  'es-CO': 'co',\n  'pt-BR': 'br',\n  'pt-PT': 'pt',\n  'en-US': 'us',\n  'en-GB': 'gb',\n  'en-CA': 'ca'\n};\n\nconst item = $input.first().json;\nconst keyword = item.target_keyword || item.keyword || (item.brief_data && item.brief_data.target_keyword);\nconst locale = item.locale || 'es-MX';\nconst country = LOCALE_TO_COUNTRY[locale] || 'us';\n\nif (!keyword) {\n  throw new Error('No target_keyword en el payload — abortando bloque Ahrefs');\n}\n\nreturn [{\n  json: {\n    ...item,\n    _ahrefs_ctx: {\n      keyword,\n      country,\n      locale,\n      content_item_id: item.id || item.content_item_id,\n      brand_slug: item.brand_slug\n    }\n  }\n}];"
+        "jsCode": "// Mapea language a country_code de Ahrefs y prepara contexto compartido.\n// IMPORTANTE: el payload real de n8n A usa db_record.main_keyword y db_record.language (no target_keyword/locale).\n// NO usar brief_final.brand_contract.brand_slug — tiene bug de cross-contamination conocido.\nconst LANG_TO_COUNTRY = {\n  'en': 'us',\n  'pt': 'br',\n  'es': 'mx'\n};\nconst LOCALE_TO_COUNTRY = {\n  'es-MX': 'mx', 'es-ES': 'es', 'es-AR': 'ar', 'es-CO': 'co',\n  'pt-BR': 'br', 'pt-PT': 'pt',\n  'en-US': 'us', 'en-GB': 'gb', 'en-CA': 'ca'\n};\n\nconst item = $input.first().json;\nconst dbRec = item.db_record || {};\n\n// Keyword: db_record.main_keyword es el campo correcto en el payload real\nconst keyword = dbRec.main_keyword\n  || item.target_keyword\n  || item.keyword\n  || (item.brief_data && item.brief_data.target_keyword);\n\n// Language: db_record.language = 'en' | 'pt' | 'es' (ISO 639-1)\nconst lang = (dbRec.language || '').toLowerCase();\nconst locale = item.locale || '';\nconst country = LANG_TO_COUNTRY[lang] || LOCALE_TO_COUNTRY[locale] || 'us';\n\n// Brand slug: desde db_record (fuente confiable, brief_final.brand_contract puede tener cross-contamination)\nconst brand_slug = dbRec.brand_slug || item.brand_slug || '';\n\n// Content item ID: ID de la fila content_items que originó este workflow\nconst content_item_id = dbRec.id || dbRec.content_item_id || item.id || item.content_item_id;\n\nif (!keyword) {\n  throw new Error('No keyword encontrada en db_record.main_keyword ni en fallbacks — abortando bloque Ahrefs');\n}\n\nreturn [{\n  json: {\n    ...item,\n    _ahrefs_ctx: {\n      keyword,\n      country,\n      lang,\n      content_item_id,\n      brand_slug\n    }\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -211,7 +218,7 @@
           "fieldValues": [
             {
               "fieldId": "brief_data",
-              "fieldValue": "={{ Object.assign({}, $('Preparar contexto Ahrefs').first().json.brief_data || {}, { ahrefs_research: $json.ahrefs_research }) }}"
+              "fieldValue": "={{ (() => { const orig = $('Preparar contexto Ahrefs').first().json; const { _ahrefs_ctx, ...rest } = orig; return Object.assign({}, rest, { ahrefs_research: $json.ahrefs_research }); })() }}"
             }
           ]
         }
