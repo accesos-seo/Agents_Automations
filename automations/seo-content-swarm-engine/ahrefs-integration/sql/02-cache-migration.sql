@@ -8,15 +8,33 @@
 BEGIN;
 
 -- Tabla de caché por (keyword, country_code)
+-- Nota: expires_at NO usa GENERATED ALWAYS porque timestamptz + interval no es
+-- inmutable en Postgres (depende de timezone). Lo manejamos con un trigger.
 CREATE TABLE IF NOT EXISTS ahrefs_keyword_cache (
     keyword TEXT NOT NULL,
     country_code TEXT NOT NULL,
     data JSONB NOT NULL,
     fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    expires_at TIMESTAMPTZ GENERATED ALWAYS AS (fetched_at + INTERVAL '7 days') STORED,
+    expires_at TIMESTAMPTZ NOT NULL,
     credits_used INT DEFAULT 5,
     PRIMARY KEY (keyword, country_code)
 );
+
+-- Trigger que setea expires_at = fetched_at + 7 días en cada insert/update
+CREATE OR REPLACE FUNCTION set_ahrefs_cache_expiry()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    NEW.expires_at := NEW.fetched_at + INTERVAL '7 days';
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_set_ahrefs_cache_expiry ON ahrefs_keyword_cache;
+CREATE TRIGGER trg_set_ahrefs_cache_expiry
+    BEFORE INSERT OR UPDATE OF fetched_at ON ahrefs_keyword_cache
+    FOR EACH ROW EXECUTE FUNCTION set_ahrefs_cache_expiry();
 
 -- Índice para queries de expiración (limpieza)
 CREATE INDEX IF NOT EXISTS idx_ahrefs_cache_expires
