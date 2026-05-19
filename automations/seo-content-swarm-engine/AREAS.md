@@ -42,6 +42,7 @@
 - Refuerzo de n8n A: filtrar competidores de `contexto_investigacion` antes de devolver.
 - Inyección de `brand_contract` con: lista de productos propios, palabras prohibidas, regla de "abre con dato".
 - Documentar exactamente qué hace n8n A hoy (es caja negra). La URL del webhook está dentro de `fn_trigger_seo_investigation`.
+- **En curso (S-008):** Integración Ahrefs en `brief_data`. Plan maestro en [`referencias/plan-ahrefs-brief-enrichment.md`](../../referencias/plan-ahrefs-brief-enrichment.md). Artefactos ejecutables en [`ahrefs-integration/`](./ahrefs-integration/). PR #12.
 
 **Áreas con las que choca:** Writer (consume brief), Validator (mide cumplimiento del contrato).
 

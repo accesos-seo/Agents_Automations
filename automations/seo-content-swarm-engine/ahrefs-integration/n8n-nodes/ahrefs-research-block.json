@@ -1,0 +1,253 @@
+{
+  "_comment": "Bloque de nodos Ahrefs para insertar al final del workflow n8n A. Importar en n8n vía clipboard o 'Import from File'. Después de importar: (1) conectar entrada al último nodo del flujo existente; (2) conectar salida al 'Respond to Webhook'; (3) configurar credenciales HTTP Header Auth para Ahrefs y Supabase service role.",
+  "_version": "1.0.0-mvp",
+  "_pipeline_phase": "fase-1-mvp",
+  "_brand_piloto": "armor-corp",
+  "name": "Ahrefs Research Block",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "brand-piloto-only",
+              "leftValue": "={{ $json.brand_slug }}",
+              "rightValue": "armor-corp",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "id": "if-brand-piloto",
+      "name": "IF brand_slug = armor-corp"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mapea locale a country_code de Ahrefs y prepara el contexto compartido\nconst LOCALE_TO_COUNTRY = {\n  'es-MX': 'mx',\n  'es-ES': 'es',\n  'es-AR': 'ar',\n  'es-CO': 'co',\n  'pt-BR': 'br',\n  'pt-PT': 'pt',\n  'en-US': 'us',\n  'en-GB': 'gb',\n  'en-CA': 'ca'\n};\n\nconst item = $input.first().json;\nconst keyword = item.target_keyword || item.keyword || (item.brief_data && item.brief_data.target_keyword);\nconst locale = item.locale || 'es-MX';\nconst country = LOCALE_TO_COUNTRY[locale] || 'us';\n\nif (!keyword) {\n  throw new Error('No target_keyword en el payload — abortando bloque Ahrefs');\n}\n\nreturn [{\n  json: {\n    ...item,\n    _ahrefs_ctx: {\n      keyword,\n      country,\n      locale,\n      content_item_id: item.id || item.content_item_id,\n      brand_slug: item.brand_slug\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0],
+      "id": "code-prepare-context",
+      "name": "Preparar contexto Ahrefs"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.ahrefs.com/v3/keywords-explorer/overview",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "keyword", "value": "={{ $json._ahrefs_ctx.keyword }}" },
+            { "name": "country", "value": "={{ $json._ahrefs_ctx.country }}" },
+            { "name": "select", "value": "volume,keyword_difficulty,traffic_potential,cpc,search_intent,parent_topic,global_volume" }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "retry": { "enabled": true, "maxRetries": 3, "waitBetweenTries": 1000 }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, -200],
+      "id": "ahrefs-overview",
+      "name": "Ahrefs: Keyword Overview",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.ahrefs.com/v3/keywords-explorer/serp-overview",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "keyword", "value": "={{ $json._ahrefs_ctx.keyword }}" },
+            { "name": "country", "value": "={{ $json._ahrefs_ctx.country }}" }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "retry": { "enabled": true, "maxRetries": 3, "waitBetweenTries": 1000 }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, -50],
+      "id": "ahrefs-serp",
+      "name": "Ahrefs: SERP Overview",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.ahrefs.com/v3/keywords-explorer/matching-terms",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "keyword", "value": "={{ $json._ahrefs_ctx.keyword }}" },
+            { "name": "country", "value": "={{ $json._ahrefs_ctx.country }}" },
+            { "name": "match", "value": "questions" },
+            { "name": "limit", "value": "20" },
+            { "name": "select", "value": "keyword,volume,keyword_difficulty" }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "retry": { "enabled": true, "maxRetries": 3, "waitBetweenTries": 1000 }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 100],
+      "id": "ahrefs-questions",
+      "name": "Ahrefs: Questions (PAA)",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.ahrefs.com/v3/keywords-explorer/related-terms",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "keyword", "value": "={{ $json._ahrefs_ctx.keyword }}" },
+            { "name": "country", "value": "={{ $json._ahrefs_ctx.country }}" },
+            { "name": "limit", "value": "30" },
+            { "name": "select", "value": "keyword,volume,keyword_difficulty" }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "retry": { "enabled": true, "maxRetries": 3, "waitBetweenTries": 1000 }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 250],
+      "id": "ahrefs-related",
+      "name": "Ahrefs: Related Terms (LSI)",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.ahrefs.com/v3/keywords-explorer/also-rank-for",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "keyword", "value": "={{ $json._ahrefs_ctx.keyword }}" },
+            { "name": "country", "value": "={{ $json._ahrefs_ctx.country }}" },
+            { "name": "limit", "value": "20" },
+            { "name": "select", "value": "keyword,volume,keyword_difficulty" }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "retry": { "enabled": true, "maxRetries": 3, "waitBetweenTries": 1000 }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 400],
+      "id": "ahrefs-alsorank",
+      "name": "Ahrefs: Also Rank For",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [680, 100],
+      "id": "merge-ahrefs",
+      "name": "Merge Ahrefs responses"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza la respuesta Ahrefs y construye el bloque ahrefs_research.\n// Filtra dominios de competidores prohibidos del SERP.\n// Si una llamada Ahrefs falló (continueOnFail), el campo queda null y se loguea.\n\nconst COMPETIDORES_PROHIBIDOS_DOMAINS = [\n  // pt-BR iGaming (16) — debe sincronizarse con competidores-prohibidos.yaml\n  'bet365.com', 'betano.com.br', 'sportingbet.com', 'pixbet.com',\n  'betfair.com', 'rivalo.com', 'parimatch.com', 'kto.com',\n  'galera.bet', 'estrelabet.com', 'esporte.net.br', 'betnacional.com',\n  '1xbet.com', 'stake.com', 'sportingbet.com', 'betsbola.com'\n];\n\nfunction isCompetitor(url) {\n  if (!url) return false;\n  return COMPETIDORES_PROHIBIDOS_DOMAINS.some(d => url.toLowerCase().includes(d));\n}\n\nfunction safeArr(x) { return Array.isArray(x) ? x : []; }\n\n// Cada item recibido viene de un nodo HTTP distinto (merge combineAll los une)\nconst items = $input.all();\nconst data = items.reduce((acc, it) => ({ ...acc, ...it.json }), {});\n\n// La estructura exacta depende de la API de Ahrefs v3. Adaptar si difiere.\n// Asumimos que cada respuesta tiene un campo principal por endpoint.\nconst overview = data.overview || data.keyword_overview || (data.keywords && data.keywords[0]) || {};\nconst serpRaw  = data.serp_overview || data.positions || [];\nconst questions= safeArr(data.questions || data.matching_terms);\nconst related  = safeArr(data.related_terms);\nconst alsoRank = safeArr(data.also_rank_for);\n\nconst ctx = data._ahrefs_ctx || {};\n\n// 1. Filtrar competidores del SERP\nconst serpFiltered = safeArr(serpRaw).filter(r => !isCompetitor(r.url || r.target_url));\n\n// 2. Benchmarks SERP\nconst totalSerp = serpFiltered.length || 1;\nconst withFaq   = serpFiltered.filter(r => r.has_schema_faq || r.has_faq).length;\nconst withTable = serpFiltered.filter(r => r.has_table).length;\nconst hasFs     = serpFiltered.some(r => r.has_featured_snippet);\nconst avgWords  = Math.round(serpFiltered.reduce((s, r) => s + (r.word_count || 0), 0) / totalSerp);\nconst avgH2     = Math.round(serpFiltered.reduce((s, r) => s + (r.h2_count || 0), 0) / totalSerp);\n\n// Tipo de contenido dominante\nconst typeCount = serpFiltered.reduce((acc, r) => {\n  const t = r.content_type || 'unknown';\n  acc[t] = (acc[t] || 0) + 1;\n  return acc;\n}, {});\nconst dominantType = Object.entries(typeCount).sort((a, b) => b[1] - a[1])[0]?.[0] || 'unknown';\n\n// 3. FAQ priorizadas por volumen, top 8\nconst faqTop = questions\n  .sort((a, b) => (b.volume || 0) - (a.volume || 0))\n  .slice(0, 8)\n  .map(q => ({ question: q.keyword, volume: q.volume || 0 }));\n\n// 4. LSI: KD < 30 y volumen > 100, top 15\nconst lsiTop = related\n  .filter(k => (k.keyword_difficulty || 99) < 30 && (k.volume || 0) > 100)\n  .sort((a, b) => (b.volume || 0) - (a.volume || 0))\n  .slice(0, 15)\n  .map(k => ({ keyword: k.keyword, volume: k.volume || 0, kd: k.keyword_difficulty || null }));\n\n// 5. Also rank for top 10\nconst alsoTop = alsoRank\n  .sort((a, b) => (b.volume || 0) - (a.volume || 0))\n  .slice(0, 10)\n  .map(k => ({ keyword: k.keyword, volume: k.volume || 0 }));\n\nconst ahrefs_research = {\n  keyword_metrics: {\n    volume: overview.volume || null,\n    traffic_potential: overview.traffic_potential || null,\n    keyword_difficulty: overview.keyword_difficulty || null,\n    cpc: overview.cpc || null,\n    global_volume: overview.global_volume || null,\n    parent_topic: overview.parent_topic || null,\n    search_intent: overview.search_intent || null\n  },\n  serp_benchmarks: {\n    avg_word_count: avgWords || null,\n    avg_h2_count: avgH2 || null,\n    pct_with_faq: totalSerp ? +(withFaq / totalSerp).toFixed(2) : null,\n    pct_with_tables: totalSerp ? +(withTable / totalSerp).toFixed(2) : null,\n    dominant_content_type: dominantType,\n    has_featured_snippet: hasFs,\n    serp_top3_titles: serpFiltered.slice(0, 3).map(r => r.title).filter(Boolean),\n    competitors_filtered_out: safeArr(serpRaw).length - serpFiltered.length\n  },\n  recommended_structure: {\n    target_word_count: avgWords || 1500,\n    suggested_h2_count: avgH2 || 5,\n    faq_required: totalSerp ? (withFaq / totalSerp) >= 0.6 : true,\n    table_recommended: totalSerp ? (withTable / totalSerp) >= 0.5 : false,\n    featured_snippet_target: hasFs\n  },\n  faq_questions: faqTop,\n  lsi_keywords: lsiTop,\n  also_rank_for: alsoTop,\n  data_fetched_at: new Date().toISOString(),\n  ahrefs_credits_used: 5,\n  ahrefs_partial_failure: !overview.volume || serpFiltered.length === 0\n};\n\nreturn [{\n  json: {\n    content_item_id: ctx.content_item_id,\n    brand_slug: ctx.brand_slug,\n    keyword: ctx.keyword,\n    ahrefs_research\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 100],
+      "id": "code-normalize",
+      "name": "Normalizar + filtrar competidores"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "content_items",
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.content_item_id }}"
+            }
+          ]
+        },
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "brief_data",
+              "fieldValue": "={{ Object.assign({}, $('Preparar contexto Ahrefs').first().json.brief_data || {}, { ahrefs_research: $json.ahrefs_research }) }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1140, 100],
+      "id": "supabase-update",
+      "name": "Supabase: UPDATE brief_data"
+    }
+  ],
+  "connections": {
+    "IF brand_slug = armor-corp": {
+      "main": [
+        [{ "node": "Preparar contexto Ahrefs", "type": "main", "index": 0 }]
+      ]
+    },
+    "Preparar contexto Ahrefs": {
+      "main": [
+        [
+          { "node": "Ahrefs: Keyword Overview", "type": "main", "index": 0 },
+          { "node": "Ahrefs: SERP Overview", "type": "main", "index": 0 },
+          { "node": "Ahrefs: Questions (PAA)", "type": "main", "index": 0 },
+          { "node": "Ahrefs: Related Terms (LSI)", "type": "main", "index": 0 },
+          { "node": "Ahrefs: Also Rank For", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Ahrefs: Keyword Overview":  { "main": [[{ "node": "Merge Ahrefs responses", "type": "main", "index": 0 }]] },
+    "Ahrefs: SERP Overview":     { "main": [[{ "node": "Merge Ahrefs responses", "type": "main", "index": 0 }]] },
+    "Ahrefs: Questions (PAA)":   { "main": [[{ "node": "Merge Ahrefs responses", "type": "main", "index": 0 }]] },
+    "Ahrefs: Related Terms (LSI)": { "main": [[{ "node": "Merge Ahrefs responses", "type": "main", "index": 0 }]] },
+    "Ahrefs: Also Rank For":     { "main": [[{ "node": "Merge Ahrefs responses", "type": "main", "index": 0 }]] },
+    "Merge Ahrefs responses":    { "main": [[{ "node": "Normalizar + filtrar competidores", "type": "main", "index": 0 }]] },
+    "Normalizar + filtrar competidores": {
+      "main": [[{ "node": "Supabase: UPDATE brief_data", "type": "main", "index": 0 }]]
+    }
+  }
+}
