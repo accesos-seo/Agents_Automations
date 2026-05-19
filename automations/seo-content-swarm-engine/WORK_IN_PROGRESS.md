@@ -10,6 +10,7 @@
 
 | Sesión | Área | Owner | Inicio | Tarea | Estado |
 |---|---|---|---|---|---|
+| S-008 | B. Briefs / Investigación SEO | Claude-code-web (claude/ahrfes-research-OHifu) | 2026-05-19 | Integración Ahrefs en `brief_data` — plan + artefactos Fase 0/1/2 listos. Esperando ejecución de queries Fase 0 por el usuario. | en_curso |
 
 ---
 

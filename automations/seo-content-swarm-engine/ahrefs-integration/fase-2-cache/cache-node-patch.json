@@ -1,0 +1,101 @@
+{
+  "_comment": "Nodos a INSERTAR en el bloque Ahrefs (fase 1) para añadir caché. Se intercalan entre 'Preparar contexto Ahrefs' y las 5 llamadas HTTP. Si hay hit, saltan directo al UPDATE; si miss, siguen al flujo normal y al final del normalizador escriben en caché.",
+  "_version": "1.0.0-cache",
+  "_apply_after": "fase-1-mvp",
+  "name": "Ahrefs Cache Patch",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/get_ahrefs_cache",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "jsonBody": "={\n  \"p_keyword\": \"{{ $json._ahrefs_ctx.keyword }}\",\n  \"p_country\": \"{{ $json._ahrefs_ctx.country }}\"\n}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [300, 0],
+      "id": "cache-lookup",
+      "name": "Cache: get_ahrefs_cache",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "cache-hit",
+              "leftValue": "={{ $json && typeof $json === 'object' && $json.keyword_metrics ? true : false }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [520, 0],
+      "id": "if-cache-hit",
+      "name": "IF cache hit"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Si hubo cache hit, reformatea como el output del normalizador y salta directo al UPDATE\nconst ctx = $('Preparar contexto Ahrefs').first().json._ahrefs_ctx;\nconst cached = $input.first().json;\nreturn [{\n  json: {\n    content_item_id: ctx.content_item_id,\n    brand_slug: ctx.brand_slug,\n    keyword: ctx.keyword,\n    ahrefs_research: Object.assign({}, cached, {\n      data_fetched_at: cached.data_fetched_at,\n      ahrefs_credits_used: 0,\n      cache_hit: true\n    })\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [740, -100],
+      "id": "code-cache-hit-reformat",
+      "name": "Reformatear cache hit"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/set_ahrefs_cache",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "jsonBody": "={\n  \"p_keyword\": \"{{ $('Preparar contexto Ahrefs').first().json._ahrefs_ctx.keyword }}\",\n  \"p_country\": \"{{ $('Preparar contexto Ahrefs').first().json._ahrefs_ctx.country }}\",\n  \"p_data\": {{ JSON.stringify($json.ahrefs_research) }},\n  \"p_credits_used\": 5\n}",
+        "options": { "timeout": 5000 }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1360, 200],
+      "id": "cache-store",
+      "name": "Cache: set_ahrefs_cache",
+      "continueOnFail": true
+    }
+  ],
+  "_apply_instructions": [
+    "1. Importar este JSON al workflow donde ya está el bloque Fase 1.",
+    "2. Desconectar 'Preparar contexto Ahrefs' → 'Ahrefs: Keyword Overview' (y los otros 4).",
+    "3. Conectar 'Preparar contexto Ahrefs' → 'Cache: get_ahrefs_cache' → 'IF cache hit'.",
+    "4. Rama TRUE del IF: → 'Reformatear cache hit' → 'Supabase: UPDATE brief_data' (existente).",
+    "5. Rama FALSE del IF: → conectar a los 5 nodos HTTP Ahrefs (recuperando la conexión original).",
+    "6. Después del nodo 'Normalizar + filtrar competidores' (rama miss): → 'Cache: set_ahrefs_cache' → 'Supabase: UPDATE brief_data'.",
+    "7. Asegurar que get_ahrefs_cache y set_ahrefs_cache existen en Supabase (aplicar 02-cache-migration.sql primero).",
+    "8. Configurar env vars en n8n: SUPABASE_URL, SUPABASE_SERVICE_KEY (o usar credential nativa de Supabase)."
+  ]
+}
