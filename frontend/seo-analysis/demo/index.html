@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SEO Lab Agency — Plataforma de Análisis SEO</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: { fontFamily: { sans: ['Inter','system-ui','sans-serif'] } } }
+  };
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  html,body{ font-family: 'Inter', system-ui, sans-serif; }
+  .markdown h1{ font-size:1.5rem; font-weight:700; color:#0f172a; border-bottom:1px solid #e2e8f0; padding-bottom:.5rem; margin:1rem 0; }
+  .markdown h2{ font-size:1.15rem; font-weight:600; color:#1e3a8a; margin:1.25rem 0 .5rem; }
+  .markdown h3{ font-size:1rem; font-weight:600; color:#0f172a; margin:1rem 0 .25rem; }
+  .markdown p{ color:#334155; line-height:1.6; margin:.5rem 0; }
+  .markdown ul{ color:#334155; padding-left:1.25rem; list-style:disc; margin:.5rem 0; }
+  .markdown ol{ color:#334155; padding-left:1.25rem; list-style:decimal; margin:.5rem 0; }
+  .markdown li{ margin:.2rem 0; }
+  .markdown table{ width:100%; border-collapse:collapse; margin:.75rem 0; font-size:.875rem; }
+  .markdown th{ background:#f1f5f9; color:#0f172a; font-weight:600; text-align:left; padding:.5rem .75rem; border:1px solid #e2e8f0; }
+  .markdown td{ padding:.5rem .75rem; border:1px solid #e2e8f0; color:#334155; vertical-align:top; }
+  .markdown blockquote{ border-left:3px solid #2563eb; background:#eff6ff; color:#1e3a8a; padding:.5rem .75rem; margin:.75rem 0; font-size:.875rem; }
+  .markdown code{ background:#f1f5f9; padding:.1rem .35rem; border-radius:.25rem; font-size:.85em; }
+</style>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-slate-100 min-h-screen">
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useMemo, useEffect, useRef } = React;
+
+// ============================================================
+//  MOCK DATA — Consultores + Análisis
+// ============================================================
+const CONSULTORES = [
+  { id: 'u1', name: 'Andrea Castaño',   role: 'SEO Strategist',  initials: 'AC', color: 'bg-rose-500' },
+  { id: 'u2', name: 'Diego Maldonado',  role: 'SEO Technical',   initials: 'DM', color: 'bg-emerald-500' },
+  { id: 'u3', name: 'Mariana Pérez',    role: 'Content Lead',    initials: 'MP', color: 'bg-blue-500' },
+  { id: 'u4', name: 'Joaquín Ruiz',     role: 'Linkbuilding',    initials: 'JR', color: 'bg-amber-500' },
+];
+
+const PAIS = { es:'🇪🇸 España', pe:'🇵🇪 Perú', mx:'🇲🇽 México', co:'🇨🇴 Colombia', ar:'🇦🇷 Argentina', cl:'🇨🇱 Chile', us:'🇺🇸 Estados Unidos' };
+
+const ANALISIS = [
+  { id:'a1', cliente:'Top Doctors España',   dominio:'topdoctors.es',     pais:'es', consultor:'u1', snapshot:'2026-05-19', status:'complete', dr:78, traffic:760959, value:21570727, kws:100335, refdom:6525, findings:8, recovery:6 },
+  { id:'a2', cliente:'Volkswagen Perú',      dominio:'volkswagen.com.pe', pais:'pe', consultor:'u2', snapshot:'2026-05-14', status:'complete', dr:43, traffic:11013,  value:70657,    kws:479,    refdom:254,  findings:5, recovery:4 },
+  { id:'a3', cliente:'BBVA México',          dominio:'bbva.mx',           pais:'mx', consultor:'u1', snapshot:'2026-05-18', status:'complete', dr:84, traffic:4250000,value:38200000, kws:285000, refdom:18900,findings:11,recovery:7 },
+  { id:'a4', cliente:'Mercado Libre AR',     dominio:'mercadolibre.com.ar',pais:'ar', consultor:'u3', snapshot:'2026-05-17', status:'complete', dr:92, traffic:38400000,value:124500000,kws:2100000,refdom:142000,findings:14,recovery:9 },
+  { id:'a5', cliente:'Falabella Chile',      dominio:'falabella.com',     pais:'cl', consultor:'u4', snapshot:'2026-05-16', status:'complete', dr:79, traffic:9870000,value:48300000, kws:520000, refdom:35600,findings:9, recovery:6 },
+  { id:'a6', cliente:'Rappi Colombia',       dominio:'rappi.com',         pais:'co', consultor:'u2', snapshot:'2026-05-19', status:'running',  dr:null,traffic:null,   value:null,     kws:null,   refdom:null, findings:null,recovery:null },
+  { id:'a7', cliente:'OLX México',           dominio:'olx.com.mx',        pais:'mx', consultor:'u3', snapshot:'2026-05-15', status:'error',    dr:null,traffic:null,   value:null,     kws:null,   refdom:null, findings:null,recovery:null, error:'Timeout en Ahrefs API después de 3 reintentos' },
+  { id:'a8', cliente:'Despegar.com',         dominio:'despegar.com',      pais:'ar', consultor:'u1', snapshot:'2026-05-12', status:'complete', dr:81, traffic:6200000,value:29100000, kws:380000, refdom:24500,findings:10,recovery:7 },
+];
+
+const consultorById = (id) => CONSULTORES.find(c=>c.id===id);
+
+// ============================================================
+//  INFORME — secciones de Top Doctors (mock acortado pero real)
+// ============================================================
+const INFORME_TD = [
+  { key:'executive_summary', order:1, title:'Resumen Ejecutivo', md:
+`# Diagnóstico de Visibilidad Orgánica y Plan de Crecimiento
+
+**Dominio:** topdoctors.es · **Snapshot:** 2026-05-19 · **Mercado:** España
+
+topdoctors.es es uno de los activos digitales más sólidos del sector salud privado en España: Domain Rating **78/100**, posición **#19,920** en el ranking global de Ahrefs, **100,335 keywords orgánicas**, **760,959 visitas mensuales** y un valor de tráfico estimado en **$21,570,727 USD/mes**.
+
+| Indicador | Valor |
+|---|---|
+| Domain Rating | 78 / 100 |
+| Tráfico orgánico mensual | 760,959 visitas |
+| Keywords en top-100 | 100,335 |
+| Backlinks totales | 353,179 |
+| Referring domains | 6,525 |
+| Valor de tráfico | $21.57M USD/mes |
+
+> **HALLAZGO PRINCIPAL** — 85 keywords (34% de la muestra) atrapadas en posiciones 4–10, varias con volúmenes mensuales entre 13,000 y 37,000 búsquedas. El 48.16% del tráfico depende de \`/diccionario-medico/\` y \`/farmacia/\` — exactamente los formatos que AI Overviews está absorbiendo en España.` },
+
+  { key:'site_snapshot', order:2, title:'Snapshot del Dominio', md:
+`## Distribución de Tráfico por Carpeta
+
+| Carpeta | Tráfico/mes | % del total | Tipo de contenido |
+|---|---|---|---|
+| /diccionario-medico/ | 63,893 | 24.83% | Informacional — RIESGO ALTO AI |
+| /farmacia/ | 60,028 | 23.33% | Local + transaccional |
+| /madrid-ciudad/ | 39,796 | 15.46% | Hub geográfico |
+| /articulos-medicos/ | 16,632 | 6.46% | Editorial |
+| Homepage | 12,838 | 4.99% | Brand |
+
+## Distribución de Posiciones (muestra 250 kws)
+
+- 147 keywords en top 3 (58.8%)
+- 85 keywords en pos 4–10 (34.0%) ← **zona de oportunidad**
+- 16 keywords en pos 11–20 (6.4%)
+- **0 featured snippets capturados** — crítico para AI Search` },
+
+  { key:'traffic_loss_summary', order:3, title:'Análisis de Oportunidades', md:
+`## Quick-wins identificadas
+
+35 keywords con volumen ≥ 1,000 y KD ≤ 25 en posiciones 4–20. Las 10 más relevantes:
+
+| Keyword | Vol/mes | Pos. | KD |
+|---|---|---|---|
+| farmacia de guardia | 37,000 | #7 | 6 |
+| conjuntivitis | 37,000 | #12 | 14 |
+| diverticulitis | 34,000 | #13 | 19 |
+| isquemia | 33,000 | #6 | 5 |
+| bruxismo | 28,000 | #11 | 22 |
+| hernia inguinal | 27,000 | #14 | 5 |
+| leucemia | 25,000 | #10 | 13 |
+| fisioterapia | 24,000 | #5 | 10 |
+| dermatitis | 22,000 | #7 | 12 |
+| peritonitis | 21,000 | #14 | 5 |
+
+Mover estas keywords del rango 4-10 al top 3 representa entre **25,000 y 40,000 visitas mensuales** adicionales (cálculo basado en curva CTR estándar de Ahrefs).` },
+
+  { key:'diagnosis', order:4, title:'Diagnóstico', md:
+`## Causas y Oportunidades
+
+### Amenaza 1 — Exposición a AI Overviews
+Probabilidad: **ALTA**. 48.16% del tráfico depende de carpetas que Google AI Overviews está absorbiendo. **0 featured snippets** = invisible para citaciones AI.
+
+### Amenaza 2 — Perfil de autoridad asimétrico
+DR del dominio: **78/100**. DR promedio de referrentes recientes: **12.23**. Cualquier ajuste de spam-link golpea más rápido de lo que se renueva.
+
+### Oportunidad 1 — Quick wins
+85 keywords en pos 4–10 sin trabajo activo. 35 con volumen ≥ 1,000.
+
+### Oportunidad 2 — Hubs regionales subutilizados
+Madrid concentra 15.46%; Barcelona solo 3.07% con 13 páginas. Replicación 5x viable.` },
+
+  { key:'recovery_plan', order:5, title:'Plan de Acción', md:
+`## Plan en 3 Fases
+
+### Fase 1 — Quick Wins (Semanas 1-2)
+- **1.1** Ataque a 30 keywords pos 4–10 con vol ≥ 5,000
+- **1.2** Medición línea base de AI Share of Voice
+- **1.3** Alertas de rank tracking + monitoreo AI Overviews
+
+### Fase 2 — Crecimiento Estructural (Meses 1-2)
+- **2.1** Blindaje de /diccionario-medico/ frente a AI Overviews
+- **2.2** Replicación del modelo Madrid en 9 hubs regionales
+- **2.3** Captura de 15 featured snippets
+
+### Fase 3 — Autoridad y AI Search (Meses 1-3)
+- **3.1** Link building dirigido a medios médicos ES
+- **3.2** Contenido optimizado para AI Search (Schema MedicalCondition)
+- **3.3** Crosslinking inter-regional Top Doctors (.co.uk → .es)
+
+## Métricas de Éxito (90 días)
+- Tráfico orgánico: **+60,000 visitas/mes (+8%)**
+- Valor de tráfico: **> $23M USD/mes**
+- Featured snippets: **0 → > 15**
+- AI Share of Voice: **sin medir → > 25%**` },
+
+  { key:'appendix', order:6, title:'Apéndice Técnico', md:
+`## Metodología
+
+Datos exclusivos de Ahrefs (índice global +500M keywords). Pipeline propietario SEO Lab Agency v1.0 ejecutado el 2026-05-19.
+
+**Muestra analizada:** 250 keywords + 250 páginas + 250 backlinks + 250 referring domains de un universo total de 100,335 keywords.
+
+**Cobertura:** 0.25% del universo (suficiente para keywords de mayor tráfico, ampliable a 5,000 en Fase 1).` },
+];
+
+// ============================================================
+//  STAGES — para la pantalla de progreso
+// ============================================================
+const STAGES_TEMPLATE = [
+  { key:'submitted',              label:'URL recibida y validada' },
+  { key:'queued',                 label:'Solicitud encolada' },
+  { key:'dispatched',             label:'Despachada al orquestador' },
+  { key:'ingest_keywords',        label:'Ingesta de keywords orgánicas' },
+  { key:'ingest_top_pages',       label:'Ingesta de Top Pages' },
+  { key:'ingest_backlinks',       label:'Ingesta de Backlinks' },
+  { key:'ingest_referring',       label:'Ingesta de Referring Domains' },
+  { key:'site_overview',          label:'Snapshot del dominio (DR, tráfico, valor)' },
+  { key:'comparison',             label:'Comparativa histórica vs snapshot previo' },
+  { key:'diagnostic',             label:'Diagnóstico estratégico (causas + hallazgos)' },
+  { key:'recovery',               label:'Plan de recuperación' },
+  { key:'report',                 label:'Informe final generado' },
+];
+
+// ============================================================
+//  APP CONTEXT (sin router para que abra como archivo local)
+// ============================================================
+function App(){
+  const [route, setRoute] = useState({ name:'dashboard', params:{} });
+  const [currentUserId, setCurrentUserId] = useState('u1');
+  const [analisis, setAnalisis] = useState(ANALISIS);
+
+  const navigate = (name, params={}) => setRoute({ name, params });
+  const me = consultorById(currentUserId);
+
+  return (
+    <div className="flex min-h-screen">
+      <Sidebar route={route} onNav={navigate} me={me} onSwitchUser={setCurrentUserId} />
+      <main className="flex-1 ml-64">
+        <Topbar me={me} onSwitchUser={setCurrentUserId} route={route} onNav={navigate} />
+        <div className="px-8 py-6">
+          {route.name==='dashboard' && <Dashboard analisis={analisis} me={me} onNav={navigate} />}
+          {route.name==='mis-analisis' && <MisAnalisis analisis={analisis} me={me} onNav={navigate} />}
+          {route.name==='nuevo' && <NewAnalysisForm me={me} onNav={navigate} onCreate={a=>setAnalisis([a, ...analisis])} />}
+          {route.name==='progreso' && <ProgressView id={route.params.id} analisis={analisis} onNav={navigate} setAnalisis={setAnalisis} />}
+          {route.name==='informe' && <ReportView id={route.params.id} analisis={analisis} onNav={navigate} />}
+          {route.name==='clientes' && <ClientesView analisis={analisis} onNav={navigate} />}
+          {route.name==='equipo' && <EquipoView analisis={analisis} />}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// ============================================================
+//  SIDEBAR
+// ============================================================
+function Sidebar({ route, onNav, me }){
+  const Item = ({ id, label, icon }) => {
+    const active = route.name===id || (id==='nuevo' && route.name==='progreso') || (id==='dashboard' && route.name==='informe');
+    return (
+      <button onClick={()=>onNav(id)}
+        className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition ${active ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100'}`}>
+        <span className="w-5 h-5">{icon}</span>
+        <span>{label}</span>
+      </button>
+    );
+  };
+
+  return (
+    <aside className="fixed top-0 left-0 w-64 h-screen border-r border-slate-200 bg-white px-4 py-5 flex flex-col">
+      <div className="px-2 mb-7">
+        <div className="flex items-center gap-2">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-700 to-blue-500 flex items-center justify-center text-white font-bold">S</div>
+          <div>
+            <p className="text-sm font-bold text-slate-900 leading-tight">SEO Lab Agency</p>
+            <p className="text-[10px] text-slate-500 leading-tight">Plataforma de análisis</p>
+          </div>
+        </div>
+      </div>
+
+      <p className="px-4 mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Análisis</p>
+      <div className="space-y-1">
+        <Item id="dashboard"      label="Tablero general" icon={ICON.dashboard} />
+        <Item id="mis-analisis"   label="Mis análisis"    icon={ICON.user} />
+        <Item id="nuevo"          label="Nuevo análisis"  icon={ICON.plus} />
+      </div>
+
+      <p className="px-4 mt-6 mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Datos</p>
+      <div className="space-y-1">
+        <Item id="clientes" label="Clientes"  icon={ICON.briefcase} />
+        <Item id="equipo"   label="Equipo"    icon={ICON.team} />
+      </div>
+
+      <div className="flex-1"></div>
+
+      <div className="border-t border-slate-200 pt-4 px-2">
+        <div className="flex items-center gap-3">
+          <div className={`w-9 h-9 rounded-full ${me.color} text-white font-semibold flex items-center justify-center text-sm`}>{me.initials}</div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-slate-900 truncate">{me.name}</p>
+            <p className="text-[11px] text-slate-500 truncate">{me.role}</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function Topbar({ me, onSwitchUser, route, onNav }){
+  return (
+    <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur px-8 py-3 flex items-center justify-between">
+      <div className="flex items-center gap-2 text-sm">
+        <span className="text-slate-500">SEO Lab Agency</span>
+        <span className="text-slate-300">/</span>
+        <span className="text-slate-700 font-medium">{routeBreadcrumb(route)}</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-slate-500">Ver como</span>
+        <select value={me.id} onChange={e=>onSwitchUser(e.target.value)}
+          className="text-sm bg-slate-100 border border-slate-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-200">
+          {CONSULTORES.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <button onClick={()=>onNav('nuevo')} className="bg-blue-700 text-white text-sm font-medium px-4 py-1.5 rounded-md hover:bg-blue-800">+ Nuevo análisis</button>
+      </div>
+    </div>
+  );
+}
+
+function routeBreadcrumb(r){
+  if(r.name==='dashboard') return 'Tablero general';
+  if(r.name==='mis-analisis') return 'Mis análisis';
+  if(r.name==='nuevo') return 'Nuevo análisis';
+  if(r.name==='progreso') return 'Análisis en curso';
+  if(r.name==='informe') return 'Informe del cliente';
+  if(r.name==='clientes') return 'Clientes';
+  if(r.name==='equipo') return 'Equipo';
+  return '';
+}
+
+// ============================================================
+//  DASHBOARD — tablero general con TODOS los análisis
+// ============================================================
+function Dashboard({ analisis, me, onNav }){
+  const [filtroConsultor, setFiltroConsultor] = useState('all');
+  const [filtroStatus, setFiltroStatus]       = useState('all');
+  const [search, setSearch]                   = useState('');
+
+  const filtrados = useMemo(()=> analisis.filter(a=>{
+    if(filtroConsultor!=='all' && a.consultor!==filtroConsultor) return false;
+    if(filtroStatus!=='all'    && a.status!==filtroStatus)       return false;
+    if(search && !(a.cliente.toLowerCase().includes(search.toLowerCase()) || a.dominio.includes(search.toLowerCase()))) return false;
+    return true;
+  }), [analisis, filtroConsultor, filtroStatus, search]);
+
+  const stats = useMemo(()=>{
+    const total = analisis.length;
+    const completos = analisis.filter(a=>a.status==='complete').length;
+    const enCurso = analisis.filter(a=>a.status==='running').length;
+    const error = analisis.filter(a=>a.status==='error').length;
+    const trafficSum = analisis.filter(a=>a.traffic).reduce((s,a)=>s+a.traffic,0);
+    const valueSum = analisis.filter(a=>a.value).reduce((s,a)=>s+a.value,0);
+    return { total, completos, enCurso, error, trafficSum, valueSum };
+  }, [analisis]);
+
+  return (
+    <div>
+      <div className="mb-7">
+        <h1 className="text-2xl font-bold text-slate-900">Tablero general</h1>
+        <p className="text-sm text-slate-600 mt-1">Todos los análisis SEO ejecutados por el equipo.</p>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
+        <KpiCard label="Análisis totales" value={stats.total} tone="slate" hint={`${stats.completos} completados`} />
+        <KpiCard label="En curso ahora" value={stats.enCurso} tone="blue" hint="Pipeline activo" />
+        <KpiCard label="Tráfico orgánico monitoreado" value={formatCompact(stats.trafficSum)} tone="emerald" hint="visitas/mes acumuladas" />
+        <KpiCard label="Valor de tráfico" value={`$${formatCompact(stats.valueSum)}`} tone="amber" hint="USD/mes equivalente Ads" />
+      </div>
+
+      {/* Filtros */}
+      <div className="bg-white border border-slate-200 rounded-lg p-3 mb-3 flex flex-wrap items-center gap-2">
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar cliente o dominio…"
+          className="text-sm px-3 py-2 border border-slate-200 rounded-md flex-1 min-w-[200px] focus:outline-none focus:ring-2 focus:ring-blue-200" />
+        <select value={filtroConsultor} onChange={e=>setFiltroConsultor(e.target.value)} className="text-sm px-3 py-2 border border-slate-200 rounded-md bg-white">
+          <option value="all">Todos los consultores</option>
+          {CONSULTORES.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <select value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)} className="text-sm px-3 py-2 border border-slate-200 rounded-md bg-white">
+          <option value="all">Todos los estados</option>
+          <option value="complete">Completados</option>
+          <option value="running">En curso</option>
+          <option value="error">Con error</option>
+        </select>
+      </div>
+
+      {/* Tabla */}
+      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            <tr className="text-left text-xs uppercase tracking-wider text-slate-500">
+              <th className="px-4 py-3 font-semibold">Cliente</th>
+              <th className="px-4 py-3 font-semibold">País</th>
+              <th className="px-4 py-3 font-semibold">Consultor</th>
+              <th className="px-4 py-3 font-semibold">Snapshot</th>
+              <th className="px-4 py-3 font-semibold text-right">DR</th>
+              <th className="px-4 py-3 font-semibold text-right">Tráfico/mes</th>
+              <th className="px-4 py-3 font-semibold text-right">Valor</th>
+              <th className="px-4 py-3 font-semibold">Estado</th>
+              <th className="px-4 py-3 font-semibold text-right">Acción</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {filtrados.map(a=>{
+              const c = consultorById(a.consultor);
+              return (
+                <tr key={a.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3">
+                    <p className="font-medium text-slate-900">{a.cliente}</p>
+                    <p className="text-xs text-slate-500">{a.dominio}</p>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">{PAIS[a.pais]}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-7 h-7 rounded-full ${c.color} text-white text-xs font-semibold flex items-center justify-center`}>{c.initials}</div>
+                      <div>
+                        <p className="text-slate-800 leading-tight">{c.name}</p>
+                        <p className="text-[10px] text-slate-500 leading-tight">{c.role}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">{a.snapshot}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-slate-800">{a.dr ?? '—'}</td>
+                  <td className="px-4 py-3 text-right text-slate-700">{a.traffic ? formatNumber(a.traffic) : '—'}</td>
+                  <td className="px-4 py-3 text-right text-emerald-700 font-medium">{a.value ? '$'+formatCompact(a.value) : '—'}</td>
+                  <td className="px-4 py-3"><StatusBadge status={a.status}/></td>
+                  <td className="px-4 py-3 text-right">
+                    {a.status==='complete' && <button onClick={()=>onNav('informe',{id:a.id})} className="text-blue-700 hover:underline font-medium text-xs">Ver informe →</button>}
+                    {a.status==='running'  && <button onClick={()=>onNav('progreso',{id:a.id})} className="text-blue-700 hover:underline font-medium text-xs">Ver progreso →</button>}
+                    {a.status==='error'    && <button className="text-red-700 hover:underline font-medium text-xs">Ver error →</button>}
+                  </td>
+                </tr>
+              );
+            })}
+            {filtrados.length===0 && (
+              <tr><td colSpan="9" className="px-4 py-10 text-center text-sm text-slate-500">Sin resultados para los filtros aplicados.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function MisAnalisis({ analisis, me, onNav }){
+  const propios = analisis.filter(a=>a.consultor===me.id);
+  return (
+    <div>
+      <div className="mb-7">
+        <h1 className="text-2xl font-bold text-slate-900">Mis análisis</h1>
+        <p className="text-sm text-slate-600 mt-1">Análisis creados por <strong>{me.name}</strong> ({propios.length} en total).</p>
+      </div>
+      <Dashboard analisis={propios} me={me} onNav={onNav} />
+    </div>
+  );
+}
+
+// ============================================================
+//  FORM NUEVO ANÁLISIS
+// ============================================================
+function NewAnalysisForm({ me, onNav, onCreate }){
+  const [url, setUrl] = useState('');
+  const [client, setClient] = useState('');
+  const [country, setCountry] = useState('es');
+  const [rowLimit, setRowLimit] = useState(500);
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = (e) => {
+    e.preventDefault();
+    setError(null);
+    try {
+      const u = new URL(url.trim());
+      if(!/^https?:$/.test(u.protocol)) throw 0;
+    } catch { setError('URL inválida. Debe incluir https:// y un dominio válido.'); return; }
+    setSubmitting(true);
+    const id = 'a'+Date.now();
+    const dominio = new URL(url).hostname.replace(/^www\./,'');
+    setTimeout(()=>{
+      onCreate({ id, cliente: client.trim() || dominio, dominio, pais: country, consultor: me.id, snapshot: new Date().toISOString().slice(0,10), status:'running', dr:null, traffic:null, value:null, kws:null, refdom:null, findings:null, recovery:null });
+      onNav('progreso', { id });
+    }, 500);
+  };
+
+  return (
+    <div className="max-w-2xl">
+      <div className="mb-7">
+        <h1 className="text-2xl font-bold text-slate-900">Nuevo análisis SEO</h1>
+        <p className="text-sm text-slate-600 mt-1">Pegá la URL del cliente. El pipeline ingiere Ahrefs, compara, diagnostica y genera el informe en automático.</p>
+      </div>
+
+      <form onSubmit={submit} className="bg-white border border-slate-200 rounded-lg p-6 space-y-5">
+        <div>
+          <label className="block text-sm font-medium text-slate-800">URL del sitio <span className="text-red-600">*</span></label>
+          <input type="url" required value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://www.tucliente.com/"
+            className="mt-1 w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500" />
+          <p className="mt-1 text-xs text-slate-500">Incluí el protocolo <code className="bg-slate-100 px-1 rounded">https://</code>. Se analiza todo el dominio.</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-800">Nombre del cliente</label>
+            <input value={client} onChange={e=>setClient(e.target.value)} placeholder="Ej: Top Doctors España"
+              className="mt-1 w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-800">Mercado <span className="text-red-600">*</span></label>
+            <select value={country} onChange={e=>setCountry(e.target.value)} className="mt-1 w-full px-3 py-2 text-sm border border-slate-300 rounded-md bg-white">
+              {Object.entries(PAIS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-800">Profundidad: <span className="font-semibold text-blue-700">{rowLimit}</span> keywords / backlinks</label>
+          <input type="range" min="100" max="5000" step="100" value={rowLimit} onChange={e=>setRowLimit(parseInt(e.target.value,10))} className="w-full mt-2 accent-blue-600" />
+          <div className="flex justify-between text-xs text-slate-500 mt-1"><span>100 (rápido)</span><span>500 (recomendado)</span><span>5000 (exhaustivo)</span></div>
+        </div>
+
+        <div className="bg-blue-50 border border-blue-100 rounded-md p-3 flex items-start gap-3">
+          <div className={`w-9 h-9 rounded-full ${me.color} text-white text-xs font-semibold flex items-center justify-center shrink-0`}>{me.initials}</div>
+          <div className="text-xs text-blue-900">
+            <p className="font-semibold">Este análisis quedará asociado a tu usuario.</p>
+            <p className="opacity-80">Consultor responsable: {me.name} · {me.role}</p>
+          </div>
+        </div>
+
+        {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>}
+
+        <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+          <button type="button" onClick={()=>onNav('dashboard')} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-md">Cancelar</button>
+          <button type="submit" disabled={submitting} className="px-5 py-2 text-sm font-semibold text-white bg-blue-700 hover:bg-blue-800 rounded-md disabled:opacity-60">{submitting ? 'Iniciando…' : 'Iniciar análisis'}</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// ============================================================
+//  PROGRESS VIEW — checklist en vivo (simulado)
+// ============================================================
+function ProgressView({ id, analisis, onNav, setAnalisis }){
+  const a = analisis.find(x=>x.id===id);
+  const [stages, setStages] = useState(()=>STAGES_TEMPLATE.map((s,i)=>({...s, state: i===0 ? 'done' : 'pending'})));
+  const [overview, setOverview] = useState(null);
+  const tickRef = useRef();
+
+  useEffect(()=>{
+    if(!a || a.status!=='running') return;
+    const order = ['submitted','queued','dispatched','ingest_keywords','ingest_top_pages','ingest_backlinks','ingest_referring','site_overview','comparison','diagnostic','recovery','report'];
+    let i = 1;
+    const tick = ()=>{
+      if(i>=order.length){
+        // marcar completo
+        setAnalisis(prev => prev.map(x => x.id===id ? { ...x, status:'complete', dr:67, traffic:325000, value:5800000, kws:42000, refdom:3100, findings:7, recovery:5 } : x));
+        return;
+      }
+      const key = order[i];
+      setStages(prev => prev.map(s => {
+        if(s.key===key) return {...s, state:'running'};
+        return s;
+      }));
+      setTimeout(()=>{
+        setStages(prev => prev.map(s => s.key===key ? {...s, state:'done'} : s));
+        if(key==='site_overview') setOverview({ dr:67, organic_traffic:325000, organic_keywords:42000, traffic_value:5800000 });
+        i++;
+        tickRef.current = setTimeout(tick, 600);
+      }, 700);
+    };
+    tickRef.current = setTimeout(tick, 600);
+    return ()=> clearTimeout(tickRef.current);
+  }, [id]);
+
+  if(!a) return <p className="text-slate-500">Análisis no encontrado.</p>;
+  const c = consultorById(a.consultor);
+  const done = stages.filter(s=>s.state==='done').length;
+  const progress = Math.round((done/stages.length)*100);
+  const isComplete = stages.every(s=>s.state==='done');
+
+  return (
+    <div className="max-w-3xl">
+      <div className="mb-6">
+        <p className="text-xs font-semibold uppercase tracking-wider text-blue-700">Análisis SEO en curso</p>
+        <h1 className="mt-1 text-2xl font-bold text-slate-900 break-all">{a.dominio}</h1>
+        <p className="text-sm text-slate-600 mt-1">{a.cliente} · Mercado: <strong className="uppercase">{a.pais}</strong> · Snapshot {a.snapshot}</p>
+        <div className="flex items-center gap-2 mt-3">
+          <div className={`w-6 h-6 rounded-full ${c.color} text-white text-[10px] font-semibold flex items-center justify-center`}>{c.initials}</div>
+          <p className="text-xs text-slate-600">Ejecutado por <strong>{c.name}</strong></p>
+        </div>
+      </div>
+
+      <div className="mb-7">
+        <div className="flex justify-between text-xs text-slate-600 mb-1">
+          <span>Progreso general</span>
+          <span className="font-semibold">{progress}%</span>
+        </div>
+        <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+          <div className={`h-full transition-all duration-500 ${isComplete ? 'bg-emerald-500' : 'bg-blue-600'}`} style={{ width: progress+'%' }} />
+        </div>
+      </div>
+
+      <section className="mb-7">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Snapshot del dominio</h2>
+        {!overview ? (
+          <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-7 text-center text-sm text-slate-500">Las métricas aparecerán cuando el agente de valuación termine.</div>
+        ) : (
+          <div className="grid grid-cols-4 gap-3">
+            <MetricCard value={formatNumber(overview.organic_traffic)} label="Tráfico orgánico mensual" tone="blue" />
+            <MetricCard value={formatNumber(overview.organic_keywords)} label="Keywords orgánicas" tone="blue" />
+            <MetricCard value={'$'+formatCompact(overview.traffic_value)} label="Valor de tráfico USD/mes" tone="emerald" />
+            <MetricCard value={overview.dr+'/100'} label="Domain Rating" tone="slate" />
+          </div>
+        )}
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-lg">
+        <ol className="divide-y divide-slate-100 px-5">
+          {stages.map(s => <StageRow key={s.key} stage={s} />)}
+        </ol>
+      </section>
+
+      <div className="mt-9 flex items-center justify-between border-t border-slate-200 pt-5">
+        <button onClick={()=>onNav('nuevo')} className="text-sm font-medium text-slate-600 hover:underline">← Nuevo análisis</button>
+        {isComplete ? (
+          <button onClick={()=>onNav('informe',{id})} className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-5 py-2.5 rounded-md">Ver informe completo →</button>
+        ) : (
+          <span className="text-xs text-slate-500">El informe estará disponible al terminar las 12 etapas.</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StageRow({ stage }){
+  const { state, label } = stage;
+  return (
+    <li className="flex items-center gap-3 py-3">
+      <span className="shrink-0">
+        {state==='done'    && <Check />}
+        {state==='running' && <Spin />}
+        {state==='pending' && <Circle />}
+        {state==='error'   && <Cross />}
+      </span>
+      <span className={`text-sm font-medium flex-1 ${state==='done' ? 'text-emerald-700' : state==='running' ? 'text-blue-700' : state==='error' ? 'text-red-700' : 'text-slate-500'}`}>{label}</span>
+      <span className="text-[11px] font-medium uppercase tracking-wide">
+        {state==='done'    && <span className="text-emerald-700">Listo</span>}
+        {state==='running' && <span className="text-blue-700">En curso…</span>}
+        {state==='pending' && <span className="text-slate-400">Pendiente</span>}
+        {state==='error'   && <span className="text-red-700">Error</span>}
+      </span>
+    </li>
+  );
+}
+
+// ============================================================
+//  REPORT VIEW — render markdown
+// ============================================================
+function ReportView({ id, analisis, onNav }){
+  const a = analisis.find(x=>x.id===id);
+  if(!a) return <p className="text-slate-500">Análisis no encontrado.</p>;
+  const sections = INFORME_TD;
+  const c = consultorById(a.consultor);
+  const [active, setActive] = useState(sections[0].key);
+
+  return (
+    <div className="max-w-6xl">
+      <header className="mb-6 border-b border-slate-200 pb-5">
+        <p className="text-xs font-semibold uppercase tracking-wider text-blue-700">Informe SEO Confidencial</p>
+        <h1 className="mt-1 text-3xl font-bold text-slate-900 break-all">{a.dominio}</h1>
+        <div className="mt-2 flex items-center gap-3 text-sm text-slate-600 flex-wrap">
+          <span><strong>{a.cliente}</strong></span>
+          <span>·</span><span>Snapshot {a.snapshot}</span>
+          <span>·</span><span>Mercado <strong className="uppercase">{a.pais}</strong></span>
+          <span>·</span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className={`w-5 h-5 rounded-full ${c.color} text-white text-[9px] font-semibold flex items-center justify-center`}>{c.initials}</span>
+            Preparado por <strong>{c.name}</strong>
+          </span>
+        </div>
+        <div className="mt-4 flex gap-3">
+          <button onClick={()=>onNav('dashboard')} className="text-xs font-medium text-slate-600 hover:underline">← Volver al tablero</button>
+          <button className="text-xs font-medium text-slate-600 hover:underline">📥 Descargar DOCX</button>
+          <button className="text-xs font-medium text-slate-600 hover:underline">📋 Copiar enlace</button>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-[220px_1fr] gap-8">
+        <aside className="sticky top-20 self-start">
+          <nav className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-3 text-sm">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2 px-2">Secciones</p>
+            <ul className="space-y-0.5">
+              {sections.map(s => (
+                <li key={s.key}>
+                  <a href={`#${s.key}`} onClick={()=>setActive(s.key)}
+                    className={`block rounded px-2 py-1.5 text-slate-700 hover:bg-slate-200 ${active===s.key ? 'bg-white shadow-sm font-medium text-blue-700' : ''}`}>
+                    {s.order}. {s.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </aside>
+
+        <article className="min-w-0">
+          {sections.map(s => (
+            <section key={s.key} id={s.key} className="mb-10 scroll-mt-24">
+              <div className="markdown" dangerouslySetInnerHTML={{__html: renderMarkdown(s.md)}} />
+            </section>
+          ))}
+
+          <div className="mt-12 border-t border-slate-200 pt-5 text-center text-xs text-slate-500">
+            <p className="font-semibold text-slate-700">Preparado por SEO Lab Agency · Mayo 2026</p>
+            <p className="opacity-80 mt-1">Documento confidencial — Análisis basado exclusivamente en datos verificables de Ahrefs</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+//  CLIENTES VIEW
+// ============================================================
+function ClientesView({ analisis, onNav }){
+  const clientes = useMemo(()=>{
+    const map = {};
+    analisis.forEach(a=>{
+      if(!map[a.dominio]) map[a.dominio] = { cliente:a.cliente, dominio:a.dominio, pais:a.pais, runs:[], lastConsultor:a.consultor };
+      map[a.dominio].runs.push(a);
+    });
+    return Object.values(map);
+  }, [analisis]);
+
+  return (
+    <div>
+      <div className="mb-7">
+        <h1 className="text-2xl font-bold text-slate-900">Clientes</h1>
+        <p className="text-sm text-slate-600 mt-1">{clientes.length} clientes con análisis registrados.</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {clientes.map(cl => {
+          const last = cl.runs[0];
+          const c = consultorById(last.consultor);
+          return (
+            <div key={cl.dominio} className="bg-white border border-slate-200 rounded-lg p-5 hover:shadow-md transition">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <p className="font-semibold text-slate-900">{cl.cliente}</p>
+                  <p className="text-xs text-slate-500">{cl.dominio}</p>
+                </div>
+                <span className="text-xs text-slate-600">{PAIS[cl.pais]}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center mb-4">
+                <div className="bg-slate-50 rounded-md py-2">
+                  <p className="text-[10px] text-slate-500 uppercase">Runs</p>
+                  <p className="font-semibold text-slate-800">{cl.runs.length}</p>
+                </div>
+                <div className="bg-blue-50 rounded-md py-2">
+                  <p className="text-[10px] text-blue-700 uppercase">DR</p>
+                  <p className="font-semibold text-blue-800">{last.dr ?? '—'}</p>
+                </div>
+                <div className="bg-emerald-50 rounded-md py-2">
+                  <p className="text-[10px] text-emerald-700 uppercase">Tráfico</p>
+                  <p className="font-semibold text-emerald-800 text-sm">{last.traffic ? formatCompact(last.traffic) : '—'}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div className={`w-6 h-6 rounded-full ${c.color} text-white text-[10px] font-semibold flex items-center justify-center`}>{c.initials}</div>
+                  <p className="text-xs text-slate-600">Último: <strong>{c.name}</strong></p>
+                </div>
+                {last.status==='complete' && <button onClick={()=>onNav('informe',{id:last.id})} className="text-xs font-medium text-blue-700 hover:underline">Ver informe →</button>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+//  EQUIPO VIEW
+// ============================================================
+function EquipoView({ analisis }){
+  const rows = CONSULTORES.map(c => {
+    const propios = analisis.filter(a=>a.consultor===c.id);
+    const completos = propios.filter(a=>a.status==='complete').length;
+    const enCurso = propios.filter(a=>a.status==='running').length;
+    const errores = propios.filter(a=>a.status==='error').length;
+    const traffic = propios.filter(a=>a.traffic).reduce((s,a)=>s+a.traffic,0);
+    const value = propios.filter(a=>a.value).reduce((s,a)=>s+a.value,0);
+    return { ...c, total:propios.length, completos, enCurso, errores, traffic, value };
+  });
+
+  return (
+    <div>
+      <div className="mb-7">
+        <h1 className="text-2xl font-bold text-slate-900">Equipo</h1>
+        <p className="text-sm text-slate-600 mt-1">Cada consultor con sus análisis activos.</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {rows.map(r => (
+          <div key={r.id} className="bg-white border border-slate-200 rounded-lg p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-12 h-12 rounded-full ${r.color} text-white text-base font-semibold flex items-center justify-center`}>{r.initials}</div>
+              <div>
+                <p className="font-semibold text-slate-900">{r.name}</p>
+                <p className="text-xs text-slate-500">{r.role}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-2 text-center">
+              <div><p className="text-[10px] text-slate-500 uppercase">Total</p><p className="font-semibold text-slate-800">{r.total}</p></div>
+              <div><p className="text-[10px] text-emerald-600 uppercase">Listos</p><p className="font-semibold text-emerald-700">{r.completos}</p></div>
+              <div><p className="text-[10px] text-blue-600 uppercase">En curso</p><p className="font-semibold text-blue-700">{r.enCurso}</p></div>
+              <div><p className="text-[10px] text-red-600 uppercase">Error</p><p className="font-semibold text-red-700">{r.errores}</p></div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-100 text-center">
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase">Tráfico monitoreado</p>
+                <p className="font-semibold text-slate-800 text-sm">{formatCompact(r.traffic)} visitas/mes</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase">Valor de tráfico</p>
+                <p className="font-semibold text-emerald-700 text-sm">${formatCompact(r.value)} USD/mes</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+//  HELPERS
+// ============================================================
+function KpiCard({ label, value, tone, hint }){
+  const tones = {
+    slate: 'border-slate-200 bg-white',
+    blue:  'border-blue-100 bg-blue-50',
+    emerald:'border-emerald-100 bg-emerald-50',
+    amber: 'border-amber-100 bg-amber-50',
+  };
+  const valColor = { slate:'text-slate-900', blue:'text-blue-800', emerald:'text-emerald-700', amber:'text-amber-700' };
+  return (
+    <div className={`rounded-lg border ${tones[tone]} px-5 py-4`}>
+      <p className="text-xs font-medium text-slate-600">{label}</p>
+      <p className={`mt-1 text-2xl font-bold ${valColor[tone]}`}>{value}</p>
+      {hint && <p className="mt-1 text-[11px] text-slate-500">{hint}</p>}
+    </div>
+  );
+}
+
+function MetricCard({ value, label, tone }){
+  const tones = {
+    blue:'border-blue-100 bg-blue-50 text-blue-800',
+    emerald:'border-emerald-100 bg-emerald-50 text-emerald-700',
+    slate:'border-slate-200 bg-slate-50 text-slate-800',
+  };
+  return (
+    <div className={`rounded-lg border ${tones[tone]} px-4 py-3`}>
+      <p className="text-xl font-bold">{value}</p>
+      <p className="mt-1 text-[11px] font-medium opacity-80">{label}</p>
+    </div>
+  );
+}
+
+function StatusBadge({ status }){
+  if(status==='complete') return <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-xs font-medium">✓ Completado</span>;
+  if(status==='running')  return <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs font-medium"><Spin small/> En curso</span>;
+  if(status==='error')    return <span className="inline-flex items-center gap-1 bg-red-100 text-red-800 px-2 py-0.5 rounded-full text-xs font-medium">✕ Error</span>;
+  return null;
+}
+
+const formatNumber = (n) => new Intl.NumberFormat('es-ES').format(n);
+const formatCompact = (n) => {
+  if(n==null) return '—';
+  if(n>=1_000_000_000) return (n/1_000_000_000).toFixed(2)+'B';
+  if(n>=1_000_000) return (n/1_000_000).toFixed(2)+'M';
+  if(n>=1_000) return (n/1_000).toFixed(1)+'K';
+  return ''+n;
+};
+
+// Markdown muy básico
+function renderMarkdown(md){
+  // tablas
+  let html = md.replace(/^\| (.+) \|\n\|([- :|]+)\|\n((?:\|.*\|\n?)+)/gm, (m, head, sep, body) => {
+    const headCells = head.split('|').map(s=>`<th>${s.trim()}</th>`).join('');
+    const rows = body.trim().split('\n').map(r => '<tr>' + r.replace(/^\||\|$/g,'').split('|').map(s=>`<td>${inline(s.trim())}</td>`).join('') + '</tr>').join('');
+    return `<table><thead><tr>${headCells}</tr></thead><tbody>${rows}</tbody></table>`;
+  });
+  html = html
+    .replace(/^### (.*)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.*)$/gm,  '<h2>$1</h2>')
+    .replace(/^# (.*)$/gm,   '<h1>$1</h1>')
+    .replace(/^> (.*)$/gm,   '<blockquote>$1</blockquote>')
+    .replace(/^- (.+)$/gm,   '<li>$1</li>');
+  html = html.replace(/(<li>.+<\/li>\n?)+/g, m => '<ul>'+m+'</ul>');
+  // párrafos
+  html = html.split(/\n\n+/).map(b => {
+    if(/^<(h\d|ul|ol|table|blockquote)/.test(b.trim())) return b;
+    return '<p>'+inline(b)+'</p>';
+  }).join('\n');
+  return html;
+}
+function inline(s){
+  return s
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>');
+}
+
+// ============================================================
+//  ICONOS
+// ============================================================
+const ICON = {
+  dashboard: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>,
+  user: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0116 0v1"/></svg>,
+  plus: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M12 5v14M5 12h14"/></svg>,
+  briefcase: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2"/></svg>,
+  team: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20v-1a6 6 0 0112 0v1M15 20v-1a4 4 0 016 0v1"/></svg>,
+};
+const Check  = () => (<svg viewBox="0 0 24 24" className="w-6 h-6 text-emerald-600" fill="none"><circle cx="12" cy="12" r="11" fill="#ECFDF5" stroke="#a7f3d0" strokeWidth="1.5"/><path d="M7 12.5l3.5 3.5L17 9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>);
+const Spin   = ({small}) => (<svg viewBox="0 0 24 24" className={(small?'w-3 h-3 ':'w-6 h-6 ')+'animate-spin text-blue-600'} fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25"/><path d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>);
+const Circle = () => (<svg viewBox="0 0 24 24" className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/></svg>);
+const Cross  = () => (<svg viewBox="0 0 24 24" className="w-6 h-6 text-red-600" fill="none"><circle cx="12" cy="12" r="11" fill="#FEF2F2" stroke="#fecaca" strokeWidth="1.5"/><path d="M9 9l6 6M15 9l-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
