@@ -57,6 +57,13 @@ type Orchestration = {
   comparison_result: Record<string, unknown> | null;
 };
 
+type Specialist = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  photo_url: string | null;
+};
+
 type ReportContext = {
   client_id: string;
   client_name: string;
@@ -72,6 +79,22 @@ type ReportContext = {
   findings: FindingRow[];
   recovery_actions: RecoveryRow[];
   diagnostic_summary: Record<string, unknown> | null;
+  specialist: Specialist | null;
+  data_completeness: DataCompletenessReport;
+};
+
+type DataCompletenessReport = {
+  // Resumen de salud de los datos ingestados
+  has_keywords: boolean;
+  has_top_pages: boolean;
+  has_backlinks: boolean;
+  has_ref_domains: boolean;
+  has_findings: boolean;
+  has_recovery: boolean;
+  // Si data es muy parcial, generamos un report de "diagnóstico parcial"
+  is_sufficient: boolean;
+  missing_datasets: string[];
+  fallback_reason: string | null;
 };
 
 type SiteMetrics = {
@@ -197,7 +220,7 @@ async function loadOrchestration(orchestration_id: string): Promise<Orchestratio
   return rows[0];
 }
 
-async function findClientId(domain: string, orchestration_id: string): Promise<{ client_id: string; last_run_id: string }> {
+async function findClientId(domain: string, _orchestration_id: string): Promise<{ client_id: string; last_run_id: string }> {
   // El client_id no está en pipeline_orchestrations directamente.
   // Lo recuperamos vía analysis_runs del mismo orchestration window.
   const runs = await pgGet<Array<{ id: string; client_id: string; started_at: string }>>(
@@ -208,6 +231,63 @@ async function findClientId(domain: string, orchestration_id: string): Promise<{
   const client_id = runs[0].client_id;
   const last_run_id = runs[0].id;
   return { client_id, last_run_id };
+}
+
+async function loadSpecialist(orchestration_id: string): Promise<Specialist | null> {
+  // Buscamos el `created_by` en analysis_requests vinculado a esta orquestación
+  const requests = await pgGet<Array<{ created_by: string | null }>>(
+    `analysis_requests?select=created_by&orchestration_id=eq.${orchestration_id}&limit=1`
+  );
+  const user_id = requests[0]?.created_by;
+  if (!user_id) return null;
+
+  // Resolvemos en public.users (que está en schema public, no en ahrefs_web_analysis)
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/users?select=id,full_name,email,photo_url&id=eq.${user_id}&limit=1`, {
+    headers: {
+      apikey: SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+    },
+  });
+  if (!res.ok) return null;
+  const users = await res.json();
+  return users[0] ?? null;
+}
+
+function evaluateDataCompleteness(
+  kw: number, tp: number, bl: number, rd: number, fd: number, rp: number
+): DataCompletenessReport {
+  const missing: string[] = [];
+  if (kw === 0) missing.push("organic_keywords");
+  if (tp === 0) missing.push("top_pages");
+  if (bl === 0) missing.push("backlinks");
+  if (rd === 0) missing.push("referring_domains");
+  if (fd === 0) missing.push("agent_findings");
+  if (rp === 0) missing.push("recovery_plan");
+
+  // Si más de la mitad de los datasets están vacíos, no es suficiente para un report normal
+  const is_sufficient = missing.length <= 2 && kw > 0; // keywords son críticas
+  let fallback_reason: string | null = null;
+  if (!is_sufficient) {
+    if (kw === 0 && bl === 0) {
+      fallback_reason = "El pipeline de Ahrefs no devolvió datos para este dominio. Causas posibles: dominio sin presencia indexada en el país seleccionado, límite de plan Ahrefs alcanzado, o el dominio bloquea crawlers.";
+    } else if (kw === 0) {
+      fallback_reason = "Ahrefs no devolvió keywords orgánicas para este dominio en el mercado seleccionado. El análisis de backlinks sí completó.";
+    } else {
+      fallback_reason = `Algunos datasets críticos están vacíos (${missing.join(", ")}). Se genera un informe parcial con la información disponible.`;
+    }
+  }
+
+  return {
+    has_keywords: kw > 0,
+    has_top_pages: tp > 0,
+    has_backlinks: bl > 0,
+    has_ref_domains: rd > 0,
+    has_findings: fd > 0,
+    has_recovery: rp > 0,
+    is_sufficient,
+    missing_datasets: missing,
+    fallback_reason,
+  };
 }
 
 async function loadMetrics(client_id: string): Promise<SiteMetrics> {
@@ -325,6 +405,11 @@ function buildLlmPrompt(ctx: ReportContext): string {
     target_url: ctx.target_url,
     country: ctx.country.toUpperCase(),
     snapshot_date: ctx.snapshot_date,
+    specialist: ctx.specialist ? {
+      name: ctx.specialist.full_name,
+      email: ctx.specialist.email,
+    } : null,
+    data_completeness: ctx.data_completeness,
     metrics: ctx.metrics,
     top_keywords_by_value: ctx.top_keywords,
     top_pages: ctx.top_pages,
@@ -334,7 +419,28 @@ function buildLlmPrompt(ctx: ReportContext): string {
     diagnostic_summary: ctx.orchestration.diagnostic_result,
   };
 
-  return `Sos un analista SEO senior de SeoLab Agency. Generás informes de diagnóstico de tráfico orgánico siguiendo una estructura fija de 6 secciones. Los informes los lee la dirección de marketing del cliente: deben ser concisos, accionables y técnicamente sólidos. Hablás en español rioplatense profesional ("se detectó", no "se ha detectado"), sin coloquialismos.
+  const fallbackInstructions = !ctx.data_completeness.is_sufficient ? `
+
+⚠️ MODO FALLBACK ACTIVADO — DATA INSUFICIENTE
+==============================================
+Este pipeline NO devolvió datos suficientes (${ctx.data_completeness.missing_datasets.join(", ")} están vacíos).
+Razón estimada: ${ctx.data_completeness.fallback_reason}
+
+INSTRUCCIONES ESPECIALES PARA ESTE INFORME:
+- Generá las 6 secciones IGUAL pero indicando claramente que el análisis está INCOMPLETO.
+- En executive_summary, el "hallazgo principal" debe ser: "No fue posible completar el análisis automático para este dominio." con un callout destacando la razón.
+- Listá causas técnicas posibles (sin alarmar al cliente):
+    a) El dominio no tiene presencia indexada en el mercado seleccionado.
+    b) Ahrefs no tiene cobertura suficiente del dominio.
+    c) El dominio bloquea crawlers / tiene robots.txt restrictivo.
+    d) El plan de Ahrefs alcanzó el límite de queries del período.
+- En recovery_plan ofrecé acciones genéricas: verificar configuración de Ahrefs, validar país de targeting, ampliar muestra, reintentar análisis.
+- En appendix incluí los datasets que SÍ tienen datos (si alguno) y los que faltaron.
+- NO inventes métricas. Si una métrica vale 0 por la incompletitud, escribí "no disponible" en la tabla.
+- Mantené el tono profesional y constructivo, no alarmista.
+` : "";
+
+  return `Sos un analista SEO senior de SeoLab Agency. Generás informes de diagnóstico de tráfico orgánico siguiendo una estructura fija de 6 secciones. Los informes los lee la dirección de marketing del cliente: deben ser concisos, accionables y técnicamente sólidos. Hablás en español rioplatense profesional ("se detectó", no "se ha detectado"), sin coloquialismos.${fallbackInstructions}
 
 DATOS DEL ANÁLISIS (todos verificables, vienen de Ahrefs API):
 \`\`\`json
@@ -418,17 +524,24 @@ async function persistReport(ctx: ReportContext, drafts: SectionDraft[], force: 
   }
   const next_version = existing.length ? existing[0].report_version + 1 : 1;
 
-  const inserted = await pgPost(`reports`, {
+  // El status refleja si es un report completo o de fallback
+  const report_status = ctx.data_completeness.is_sufficient ? "generated" : "generated_partial";
+
+  const reportPayload: Record<string, unknown> = {
     run_id: ctx.last_run_id,
     client_id: ctx.client_id,
     domain: ctx.domain,
     report_type: REPORT_TYPE,
-    report_status: "generated",
+    report_status,
     report_version: next_version,
     output_format: "markdown",
     generated_by_agent: REPORT_AGENT,
     generated_at: new Date().toISOString(),
-  }) as Array<{ id: string }>;
+  };
+  // created_by sólo si la columna existe (post-migration 002)
+  if (ctx.specialist?.id) reportPayload.created_by = ctx.specialist.id;
+
+  const inserted = await pgPost(`reports`, reportPayload) as Array<{ id: string }>;
   const report_id = inserted[0].id;
 
   const sectionRows = drafts.map(d => ({
@@ -467,11 +580,21 @@ async function handle(req: Request): Promise<Response> {
 
   const orchestration = await loadOrchestration(body.orchestration_id);
   const { client_id, last_run_id } = await findClientId(orchestration.domain, orchestration.id);
+  const specialist = await loadSpecialist(orchestration.id);
   const metrics = await loadMetrics(client_id);
   const top_keywords = await loadTopKeywords(client_id, 10);
   const top_pages = await loadTopPages(client_id, 10);
   const findings = await loadFindings(client_id);
   const recovery_actions = await loadRecovery(client_id);
+
+  const data_completeness = evaluateDataCompleteness(
+    top_keywords.length,
+    top_pages.length,
+    metrics.backlinks_total,
+    metrics.referring_domains,
+    findings.length,
+    recovery_actions.length
+  );
 
   const ctx: ReportContext = {
     client_id,
@@ -488,11 +611,17 @@ async function handle(req: Request): Promise<Response> {
     findings,
     recovery_actions,
     diagnostic_summary: orchestration.diagnostic_result,
+    specialist,
+    data_completeness,
   };
 
   await upsertSiteOverview(ctx);
   await emitEvent(last_run_id, "agent_started", "agent_6 iniciado", {
-    orchestration_id: body.orchestration_id, model: LLM_MODEL,
+    orchestration_id: body.orchestration_id,
+    model: LLM_MODEL,
+    data_sufficient: data_completeness.is_sufficient,
+    missing_datasets: data_completeness.missing_datasets,
+    specialist_name: specialist?.full_name ?? null,
   });
 
   const prompt = buildLlmPrompt(ctx);
@@ -501,15 +630,22 @@ async function handle(req: Request): Promise<Response> {
 
   const { report_id, sections_created } = await persistReport(ctx, drafts, body.force === true);
 
-  await emitEvent(last_run_id, "agent_completed", "Informe final generado", {
-    report_id, sections_created, generated_by_agent: REPORT_AGENT, model: LLM_MODEL,
-  });
+  await emitEvent(last_run_id, "agent_completed",
+    data_completeness.is_sufficient ? "Informe final generado" : "Informe parcial generado (data incompleta)",
+    {
+      report_id, sections_created, generated_by_agent: REPORT_AGENT, model: LLM_MODEL,
+      data_sufficient: data_completeness.is_sufficient,
+      missing_datasets: data_completeness.missing_datasets,
+    }
+  );
 
   return new Response(JSON.stringify({
     ok: true,
     report_id,
     sections_created,
     generated_at: new Date().toISOString(),
+    data_sufficient: data_completeness.is_sufficient,
+    specialist: specialist?.full_name ?? null,
   }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 

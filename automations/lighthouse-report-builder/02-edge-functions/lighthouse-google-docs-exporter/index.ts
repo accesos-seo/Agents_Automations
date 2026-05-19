@@ -69,8 +69,16 @@ type ReportRow = {
   client_id: string;
   domain: string;
   report_type: string;
+  report_status: string;
   generated_at: string;
   report_version: number;
+  created_by: string | null;
+};
+
+type Specialist = {
+  full_name: string | null;
+  email: string | null;
+  photo_url: string | null;
 };
 
 type SectionRow = {
@@ -87,6 +95,8 @@ type Context = {
   country: string;
   target_url: string;
   snapshot_date: string;
+  specialist: Specialist | null;
+  is_partial: boolean;
 };
 
 async function pgGet<T>(path: string): Promise<T> {
@@ -118,7 +128,7 @@ async function pgPatch(path: string, body: unknown): Promise<void> {
 
 async function loadContext(report_id: string): Promise<Context> {
   const reports = await pgGet<ReportRow[]>(
-    `reports?select=id,run_id,client_id,domain,report_type,generated_at,report_version&id=eq.${report_id}`
+    `reports?select=id,run_id,client_id,domain,report_type,report_status,generated_at,report_version,created_by&id=eq.${report_id}`
   );
   if (!reports.length) throw new Error(`Report ${report_id} not found`);
   const report = reports[0];
@@ -127,14 +137,23 @@ async function loadContext(report_id: string): Promise<Context> {
     `report_sections?select=section_key,section_title,section_order,body_markdown&report_id=eq.${report_id}&order=section_order.asc`
   );
 
-  // Enriquecemos con datos del request (cliente_name, país, url, snapshot_date)
-  const runs = await pgGet<Array<{ client_id: string; domain: string }>>(
-    `analysis_runs?select=client_id,domain&id=eq.${report.run_id}`
+  const requests = await pgGet<Array<{ client_name: string | null; country: string | null; target_url: string; snapshot_date: string; created_by: string | null }>>(
+    `analysis_requests?select=client_name,country,target_url,snapshot_date,created_by&request_payload->>domain=eq.${report.domain}&order=created_at.desc&limit=1`
   );
-  const requests = await pgGet<Array<{ client_name: string | null; country: string | null; target_url: string; snapshot_date: string }>>(
-    `analysis_requests?select=client_name,country,target_url,snapshot_date&request_payload->>domain=eq.${report.domain}&order=created_at.desc&limit=1`
-  );
-  const req = requests[0] ?? { client_name: null, country: null, target_url: `https://${report.domain}/`, snapshot_date: new Date().toISOString().slice(0, 10) };
+  const req = requests[0] ?? { client_name: null, country: null, target_url: `https://${report.domain}/`, snapshot_date: new Date().toISOString().slice(0, 10), created_by: null };
+
+  // Especialista: usar el created_by del reporte (si existe) o del request
+  const user_id = report.created_by || req.created_by;
+  let specialist: Specialist | null = null;
+  if (user_id) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/users?select=full_name,email,photo_url&id=eq.${user_id}&limit=1`, {
+      headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
+    });
+    if (res.ok) {
+      const users = await res.json();
+      specialist = users[0] ?? null;
+    }
+  }
 
   return {
     report,
@@ -143,6 +162,8 @@ async function loadContext(report_id: string): Promise<Context> {
     country: (req.country || "").toUpperCase(),
     target_url: req.target_url,
     snapshot_date: req.snapshot_date,
+    specialist,
+    is_partial: report.report_status === "generated_partial",
   };
 }
 
@@ -215,6 +236,12 @@ function renderInline(s: string): string {
 // ─────────────────────────────────────────────────────────────────────────────
 function buildCoverPage(ctx: Context): string {
   const date = new Date(ctx.snapshot_date).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" });
+  const specialistRow = ctx.specialist?.full_name
+    ? `<tr><td style="padding:6px 0;color:${BRAND.textMuted};">Especialista</td><td style="padding:6px 0;font-weight:600;color:${BRAND.navyDark};">${esc(ctx.specialist.full_name)}${ctx.specialist.email ? ` <span style="color:${BRAND.textMuted};font-weight:400;">· ${esc(ctx.specialist.email)}</span>` : ""}</td></tr>`
+    : "";
+  const partialBadge = ctx.is_partial
+    ? `<div style="display:inline-block;background:${BRAND.warningAmber};padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:1.5px;color:#fff;text-transform:uppercase;margin-bottom:10px;margin-left:8px;">⚠ Informe Parcial</div>`
+    : "";
   return `
 <div style="page-break-after:always;padding:60px 40px;font-family:'Inter','Helvetica',sans-serif;min-height:900px;position:relative;background:linear-gradient(180deg, ${BRAND.bgWhite} 0%, ${BRAND.bgWhite} 70%, ${BRAND.mintGradient}22 100%);">
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:80px;">
@@ -226,6 +253,7 @@ function buildCoverPage(ctx: Context): string {
     <div style="display:inline-block;background:linear-gradient(135deg, ${BRAND.mintBright}, ${BRAND.mintGradient});padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:1.5px;color:${BRAND.navyDark};text-transform:uppercase;margin-bottom:20px;">
       Informe SEO Confidencial
     </div>
+    ${partialBadge}
     <h1 style="font-size:42px;font-weight:800;color:${BRAND.navyDark};line-height:1.15;letter-spacing:-1px;margin:0 0 14px 0;">
       Diagnóstico de<br/>Tráfico Orgánico
     </h1>
@@ -240,6 +268,7 @@ function buildCoverPage(ctx: Context): string {
       <tr><td style="padding:6px 0;color:${BRAND.textMuted};">Mercado</td><td style="padding:6px 0;font-weight:600;color:${BRAND.navyDark};">${esc(ctx.country)}</td></tr>
       <tr><td style="padding:6px 0;color:${BRAND.textMuted};">Fecha de análisis</td><td style="padding:6px 0;font-weight:600;color:${BRAND.navyDark};">${esc(date)}</td></tr>
       <tr><td style="padding:6px 0;color:${BRAND.textMuted};">Herramienta</td><td style="padding:6px 0;font-weight:600;color:${BRAND.navyDark};">Ahrefs — Base de datos SEO global</td></tr>
+      ${specialistRow}
       <tr><td style="padding:6px 0;color:${BRAND.textMuted};">Preparado por</td><td style="padding:6px 0;font-weight:600;color:${BRAND.navyDark};">SeoLab Agency</td></tr>
       <tr><td style="padding:6px 0;color:${BRAND.textMuted};">Versión</td><td style="padding:6px 0;font-weight:600;color:${BRAND.navyDark};">v${ctx.report.report_version}</td></tr>
     </table>
@@ -387,7 +416,11 @@ async function createDoc(ctx: Context): Promise<{ url: string; documentId: strin
   const token = await getGoogleToken();
   const root = await ensureFolder(token, DRIVE_ROOT, null);
   const clientFolder = await ensureFolder(token, sanitizeName(ctx.client_name), root);
-  const title = sanitizeName(`Informe SEO ${ctx.client_name} ${ctx.snapshot_date} v${ctx.report.report_version}`);
+  // Nombre del archivo: incluye especialista si está disponible
+  // Ej: "Informe SEO Mercado Libre 2026-05-19 v1 — Juan Pérez"
+  const specialistSuffix = ctx.specialist?.full_name ? ` — ${ctx.specialist.full_name}` : "";
+  const partialSuffix = ctx.is_partial ? " [PARCIAL]" : "";
+  const title = sanitizeName(`Informe SEO ${ctx.client_name} ${ctx.snapshot_date} v${ctx.report.report_version}${specialistSuffix}${partialSuffix}`);
   const html = buildHtml(ctx);
   const fileId = await uploadGoogleDoc(token, title, html, clientFolder);
   await setPublicReader(token, fileId);
