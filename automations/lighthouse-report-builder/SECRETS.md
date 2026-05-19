@@ -13,6 +13,10 @@ Este documento explica **dónde vive cada secreto** y **cómo configurarlo**.
 | `OPENROUTER_API_KEY` | Edge Function | `supabase secrets set` | API key de OpenRouter para llamadas al LLM. |
 | `LIGHTHOUSE_REPORT_INTERNAL_SECRET` | Edge Function + orquestador | `supabase secrets set` | Header `x-internal-secret` que protege la función contra invocación externa. |
 | `LIGHTHOUSE_REPORT_MODEL` | Edge Function (opcional) | `supabase secrets set` | Modelo LLM a usar. Default `anthropic/claude-sonnet-4`. |
+| `GOOGLE_CALENDAR_CLIENT_ID` | google-docs-exporter | `supabase secrets set` | OAuth client ID. Reusa el del proyecto freelancers. |
+| `GOOGLE_CALENDAR_CLIENT_SECRET` | google-docs-exporter | `supabase secrets set` | OAuth client secret. |
+| `GOOGLE_DOCS_REFRESH_TOKEN` | google-docs-exporter | `supabase secrets set` | Refresh token para Drive API. |
+| `LIGHTHOUSE_DRIVE_ROOT` | google-docs-exporter (opcional) | `supabase secrets set` | Carpeta raíz en Drive. Default `SeoLab Informes SEO`. |
 
 ## Cómo configurar
 

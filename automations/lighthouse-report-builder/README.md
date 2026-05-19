@@ -102,8 +102,57 @@ Por defecto usa `anthropic/claude-sonnet-4` vía OpenRouter (balance costo/calid
 - **Genera 1 informe por orquestación**, no por dataset. Si necesitamos informes parciales (solo backlinks, solo keywords) habría que parametrizar.
 - **Sin retry automático del LLM.** Si OpenRouter falla, devuelve 500 al orquestador y debe reintentar.
 
+## Edge Function complementaria: `lighthouse-google-docs-exporter`
+
+Toma el report generado por `agent_6` y lo deposita en Google Drive como Google Doc con la identidad visual de **SeoLab Agency**: portada con gradiente mint→navy, índice, secciones con headers/footers, tablas estilizadas con paleta corporativa.
+
+### Identidad visual aplicada
+
+| Color | Hex | Uso |
+|---|---|---|
+| Mint corporativo | `#10D9C4` | CTAs, acentos, bordes |
+| Mint gradient | `#7FFFE0` | Fondos suaves de portada |
+| Navy oscuro | `#0A0E27` | Headings, texto principal |
+| Navy medio | `#1E2347` | Headers de tabla |
+| Lavanda | `#C4B5FD` | Acentos secundarios |
+| Body text | `#1A1A2E` | Cuerpo |
+
+### Uso
+
+```bash
+curl -X POST https://stjugsrkrweakvzmizpq.supabase.co/functions/v1/lighthouse-google-docs-exporter \
+  -H "x-internal-secret: <tu-secreto>" \
+  -H "Content-Type: application/json" \
+  -d '{"report_id":"2efb1212-0846-4a49-8a4b-8c798ef07d22"}'
+```
+
+Devuelve:
+```json
+{
+  "ok": true,
+  "document_url": "https://docs.google.com/document/d/.../edit",
+  "document_id": "...",
+  "generated_at": "...",
+  "cached": false
+}
+```
+
+Pasá `"regenerate": true` para forzar la creación de un nuevo doc aunque ya exista.
+
+### Drive: estructura de carpetas
+
+```
+SeoLab Informes SEO/
+  ├── Fallabella/
+  │   └── Informe SEO Fallabella 2026-05-19 v1
+  ├── Volkswagen Perú/
+  │   └── Informe SEO Volkswagen Perú 2026-05-14 v1
+  └── ...
+```
+
 ## Próximos pasos (no en este sprint)
 
-1. **Google Docs export**: agregar paso 7 que toma el report markdown y lo deposita en un Google Doc con plantilla fija (logo, portada, footer). Ver propuesta en `automations/lighthouse-report-builder/02-edge-functions/lighthouse-google-docs-exporter/` (pendiente).
-2. **Caching de prompts**: usar prompt caching de Anthropic para reducir costo al 90% en re-runs.
+1. **Hookear el exporter al botón "Descargar Google Doc"** del frontend (Vite/React).
+2. **Caching de prompts** del agent_6: usar prompt caching de Anthropic para reducir costo al 90% en re-runs.
 3. **Sección 7 opcional**: análisis competitivo (requiere ingesta de SERP overview de Ahrefs).
+4. **Plantilla Google Docs nativa**: en vez de HTML upload, copiar un Google Doc maestro vía Drive API y usar Docs API `batchUpdate` con `replaceAllText` para fidelidad total de portada/headers/footers.
