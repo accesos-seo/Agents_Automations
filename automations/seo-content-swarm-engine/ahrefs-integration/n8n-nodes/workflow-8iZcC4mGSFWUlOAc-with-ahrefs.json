@@ -1,0 +1,556 @@
+{
+  "id": "8iZcC4mGSFWUlOAc",
+  "name": "SEO Content Swarm Engine — with Ahrefs",
+  "meta": {
+    "workflow_id": "8iZcC4mGSFWUlOAc",
+    "version": "2.0.0-ahrefs",
+    "ahrefs_integration": "fase-1-mvp",
+    "bug_fixes": ["inject-brand-contract: fallback brand_slug changed from 'vera-bet' to 'sin-brand'"],
+    "exported_at": "2026-05-19",
+    "total_nodes": 28
+  },
+  "nodes": [
+    {
+      "id": "wfb-node-s001",
+      "name": "Webhook Frontend Brief1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [240, 1664],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "brief-frontend",
+        "options": {}
+      }
+    },
+    {
+      "id": "sqc-node-s002",
+      "name": "Supabase Query Context1",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [460, 1664],
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "content_items",
+        "returnAll": false,
+        "limit": 1,
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.body.content_item_id }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "pd-node-s003",
+      "name": "Preparar Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 1664],
+      "parameters": {
+        "jsCode": "const body = $('Webhook Frontend Brief1').first().json.body || {};\nconst dbRecord = $input.first().json || {};\n\nreturn [{\n  json: {\n    db_record: dbRecord,\n    brief_request: body,\n    target_keyword: dbRecord.main_keyword || body.keyword || '',\n    language: dbRecord.language || body.language || 'es',\n    brand_slug: dbRecord.brand_slug || body.brand_slug || ''\n  }\n}];"
+      }
+    },
+    {
+      "id": "bg-node-s004",
+      "name": "Buscar en Google",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 1664],
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.googleapis.com/customsearch/v1",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "key", "value": "={{ $env.GOOGLE_API_KEY }}" },
+            { "name": "cx", "value": "={{ $env.GOOGLE_CSE_ID }}" },
+            { "name": "q", "value": "={{ $json.target_keyword }}" },
+            { "name": "num", "value": "10" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "ai-node-s005",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1120, 1664],
+      "parameters": {
+        "agent": "conversationalAgent",
+        "promptType": "auto",
+        "text": "=Analiza los resultados de búsqueda para la keyword: {{ $('Preparar Data').first().json.target_keyword }}\n\nResultados: {{ JSON.stringify($json) }}\n\nExtrae los URLs de los top 10 resultados orgánicos.",
+        "options": {}
+      }
+    },
+    {
+      "id": "ps-node-s006",
+      "name": "Procesar SERP",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 1664],
+      "parameters": {
+        "jsCode": "const serpData = $input.first().json;\nconst items = serpData.items || serpData.organic_results || [];\n\nconst urls = items\n  .filter(item => item.link || item.url)\n  .map(item => ({\n    url: item.link || item.url,\n    title: item.title || '',\n    snippet: item.snippet || item.description || ''\n  }));\n\nreturn [{ json: { urls, total: urls.length, keyword: $('Preparar Data').first().json.target_keyword } }];"
+      }
+    },
+    {
+      "id": "su-node-s007",
+      "name": "Separar URLs para Jina",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1560, 1664],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "ruc-node-s008",
+      "name": "Read URL content1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 1664],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://r.jina.ai/{{ $json.url }}",
+        "options": {
+          "timeout": 30000,
+          "response": { "response": { "fullResponse": false } }
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "acr-node-s009",
+      "name": "Agrupar Contenido Raspado",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [2000, 1664],
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      }
+    },
+    {
+      "id": "ecp-node-s010",
+      "name": "Extraer Contexto para Redactor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2220, 1664],
+      "parameters": {
+        "jsCode": "const scraped = $input.first().json.data || [];\nconst contexts = scraped.map((item, i) => ({\n  index: i + 1,\n  url: item.url || '',\n  content: typeof item === 'string' ? item.substring(0, 3000) : JSON.stringify(item).substring(0, 3000)\n}));\n\nreturn [{ json: { scraped_contexts: contexts, count: contexts.length } }];"
+      }
+    },
+    {
+      "id": "as-node-s011",
+      "name": "Analizar SERP con IA",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.1,
+      "position": [2440, 1664],
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {},
+        "messages": {
+          "values": [
+            {
+              "content": "=Eres un analista SEO experto. Analiza el contenido SERP extraído y genera un análisis competitivo detallado para la keyword: {{ $('Preparar Data').first().json.target_keyword }}\n\nContenido SERP:\n{{ JSON.stringify($json.scraped_contexts) }}\n\nGenera: estructura de contenido dominante, intención de búsqueda, gaps de contenido.",
+              "role": "user"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ae-node-s012",
+      "name": "Agente Estratega (Data-Driven)1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [2660, 1664],
+      "parameters": {
+        "agent": "conversationalAgent",
+        "promptType": "auto",
+        "text": "=Eres el Agente Estratega SEO. Basándote en el análisis SERP y el brief del cliente, define la estrategia de contenido data-driven.\n\nAnálisis SERP: {{ JSON.stringify($('Analizar SERP con IA').first().json) }}\nBrief: {{ JSON.stringify($('Preparar Data').first().json) }}\n\nDefine: ángulo de contenido, propuesta de valor única, estructura recomendada.",
+        "options": {}
+      }
+    },
+    {
+      "id": "aa-node-s013",
+      "name": "Agente Arquitecto",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [2880, 1664],
+      "parameters": {
+        "agent": "conversationalAgent",
+        "promptType": "auto",
+        "text": "=Eres el Agente Arquitecto de Contenido. Crea el blueprint (arquitectura detallada) del artículo.\n\nEstrategia: {{ JSON.stringify($('Agente Estratega (Data-Driven)1').first().json) }}\nKeyword: {{ $('Preparar Data').first().json.target_keyword }}\n\nGenera: blueprint con H1, H2s, H3s, longitud estimada por sección, CTA.",
+        "options": {}
+      }
+    },
+    {
+      "id": "vb-node-s014",
+      "name": "Validar Blueprint",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3100, 1664],
+      "parameters": {
+        "jsCode": "const blueprint = $input.first().json;\nconst output = blueprint.output || blueprint.text || JSON.stringify(blueprint);\n\n// Validaciones básicas\nconst hasH1 = output.toLowerCase().includes('h1') || output.toLowerCase().includes('título');\nconst hasH2 = output.toLowerCase().includes('h2') || output.toLowerCase().includes('sección');\nconst wordCount = output.split(' ').length;\n\nconst validation = {\n  is_valid: hasH1 && hasH2 && wordCount > 50,\n  has_h1: hasH1,\n  has_h2: hasH2,\n  blueprint_word_count: wordCount,\n  warnings: []\n};\n\nif (!hasH1) validation.warnings.push('Missing H1 structure');\nif (!hasH2) validation.warnings.push('Missing H2 structure');\n\nreturn [{ json: { blueprint: output, validation, raw: blueprint } }];"
+      }
+    },
+    {
+      "id": "sc-node-s015",
+      "name": "sanitize-competitors",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3320, 1664],
+      "parameters": {
+        "jsCode": "const FORBIDDEN_COMPETITORS = [\n  'bet365', 'betano', 'sportingbet', 'pixbet', 'estrelabet',\n  'betnacional', '1xbet', 'stake.com', 'kto.com', 'galera.bet',\n  'blaze', 'rivalo', 'parimatch', 'betfair', 'superbet', 'novibet'\n];\n\nconst item = $input.first().json;\nconst blueprint = item.blueprint || '';\nconst brand_contract = (item.raw && item.raw.brand_contract) || {};\n\nconst forbiddenList = brand_contract.forbidden_competitors || FORBIDDEN_COMPETITORS;\n\nlet sanitized = blueprint;\nconst found_competitors = [];\n\nforbiddenList.forEach(comp => {\n  const regex = new RegExp(comp.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&'), 'gi');\n  if (regex.test(sanitized)) {\n    found_competitors.push(comp);\n    sanitized = sanitized.replace(regex, '[COMPETIDOR]');\n  }\n});\n\nconst sanitization_report = {\n  competitors_found: found_competitors,\n  total_replaced: found_competitors.length,\n  sanitized_at: new Date().toISOString()\n};\n\nreturn [{ json: { ...item, blueprint: sanitized, sanitization_report } }];"
+      }
+    },
+    {
+      "id": "ibc-node-s013",
+      "name": "inject-brand-contract",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3540, 1664],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst db_record = item.db_record || $('Preparar Data').first().json.db_record || {};\nconst brand_slug = db_record.brand_slug || item.brand_slug || '';\n\n// BUG FIX: fallback cambiado de 'vera-bet' a 'sin-brand'\nconst resolvedSlug = brand_slug || 'sin-brand';\n\nconst brand_contract = {\n  brand_slug: resolvedSlug,\n  brand_name: resolvedSlug,\n  language: db_record.language || 'es',\n  market: db_record.market || 'es-MX',\n  branded_products: [],\n  forbidden_competitors: [\n    'bet365', 'betano', 'sportingbet', 'pixbet', 'estrelabet',\n    'betnacional', '1xbet', 'stake.com', 'kto.com', 'galera.bet'\n  ],\n  writing_rules: [\n    'Nunca mencionar competidores',\n    'Mínimo 2 menciones a la marca por artículo'\n  ],\n  contract_version: 'injected-v1'\n};\n\nconst brief_final = {\n  ...(item.brief_final || {}),\n  brand_contract,\n  blueprint: item.blueprint || '',\n  sanitization_report: item.sanitization_report || {},\n  target_keyword: db_record.main_keyword || item.target_keyword || '',\n  language: db_record.language || 'es'\n};\n\nreturn [{ json: { ...item, brief_final, db_record } }];"
+      }
+    },
+    {
+      "id": "ahrefs-prepare-ctx",
+      "name": "Ahrefs: Preparar contexto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4200, 1664],
+      "parameters": {
+        "jsCode": "const LANG_TO_COUNTRY = { 'en': 'us', 'pt': 'br', 'es': 'mx' };\n\nconst item = $input.first().json;\nconst dbRec = item.db_record || {};\nconst keyword = dbRec.main_keyword || '';\nconst lang = (dbRec.language || '').toLowerCase();\nconst country = LANG_TO_COUNTRY[lang] || 'us';\n\nif (!keyword) {\n  return [{ json: { ...item, _ahrefs_skip: true, _ahrefs_ctx: null } }];\n}\n\nreturn [{ json: { ...item, _ahrefs_ctx: { keyword, country, lang } } }];"
+      }
+    },
+    {
+      "id": "ahrefs-overview-n",
+      "name": "Ahrefs: Keyword Overview",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4420, 1464],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.ahrefs.com/v3/keywords-explorer/overview",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "keyword", "value": "={{ $json._ahrefs_ctx.keyword }}" },
+            { "name": "country", "value": "={{ $json._ahrefs_ctx.country }}" },
+            { "name": "select", "value": "volume,keyword_difficulty,traffic_potential,cpc,search_intent,parent_topic,global_volume" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "ahrefs-serp-n",
+      "name": "Ahrefs: SERP Overview",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4420, 1614],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.ahrefs.com/v3/keywords-explorer/serp-overview",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "keyword", "value": "={{ $json._ahrefs_ctx.keyword }}" },
+            { "name": "country", "value": "={{ $json._ahrefs_ctx.country }}" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "ahrefs-questions-n",
+      "name": "Ahrefs: Questions (PAA)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4420, 1764],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.ahrefs.com/v3/keywords-explorer/matching-terms",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "keyword", "value": "={{ $json._ahrefs_ctx.keyword }}" },
+            { "name": "country", "value": "={{ $json._ahrefs_ctx.country }}" },
+            { "name": "match", "value": "questions" },
+            { "name": "limit", "value": "20" },
+            { "name": "select", "value": "keyword,volume,keyword_difficulty" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "ahrefs-related-n",
+      "name": "Ahrefs: Related Terms",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4420, 1914],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.ahrefs.com/v3/keywords-explorer/related-terms",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "keyword", "value": "={{ $json._ahrefs_ctx.keyword }}" },
+            { "name": "country", "value": "={{ $json._ahrefs_ctx.country }}" },
+            { "name": "limit", "value": "30" },
+            { "name": "select", "value": "keyword,volume,keyword_difficulty" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "ahrefs-alsorank-n",
+      "name": "Ahrefs: Also Rank For",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4420, 2064],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.ahrefs.com/v3/keywords-explorer/also-rank-for",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "keyword", "value": "={{ $json._ahrefs_ctx.keyword }}" },
+            { "name": "country", "value": "={{ $json._ahrefs_ctx.country }}" },
+            { "name": "limit", "value": "20" },
+            { "name": "select", "value": "keyword,volume,keyword_difficulty" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "ahrefs-merge-n",
+      "name": "Merge Ahrefs",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [4660, 1764],
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      }
+    },
+    {
+      "id": "ahrefs-normalize-n",
+      "name": "Ahrefs: Normalizar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4880, 1664],
+      "parameters": {
+        "jsCode": "function safeArr(x) { return Array.isArray(x) ? x : []; }\n\nconst COMPETITORS = ['bet365.com','betano.com.br','sportingbet.com','pixbet.com','estrelabet.com','betnacional.com','1xbet.com','stake.com','kto.com','galera.bet'];\nfunction isCompetitor(url) {\n  if (!url) return false;\n  return COMPETITORS.some(d => url.toLowerCase().includes(d));\n}\n\nconst items = $input.all();\nconst data = items.reduce((acc, it) => ({ ...acc, ...it.json }), {});\n\nconst overview = data.overview || data.keyword_overview || (data.keywords && data.keywords[0]) || {};\nconst serpRaw = data.serp_overview || data.positions || [];\nconst questions = safeArr(data.questions || data.matching_terms);\nconst related = safeArr(data.related_terms);\nconst alsoRank = safeArr(data.also_rank_for);\n\nconst serpFiltered = safeArr(serpRaw).filter(r => !isCompetitor(r.url || r.target_url));\nconst totalSerp = serpFiltered.length || 1;\nconst avgWords = Math.round(serpFiltered.reduce((s, r) => s + (r.word_count || 0), 0) / totalSerp);\nconst avgH2 = Math.round(serpFiltered.reduce((s, r) => s + (r.h2_count || 0), 0) / totalSerp);\nconst withFaq = serpFiltered.filter(r => r.has_schema_faq || r.has_faq).length;\nconst hasFs = serpFiltered.some(r => r.has_featured_snippet);\n\nconst faqTop = questions.sort((a, b) => (b.volume||0)-(a.volume||0)).slice(0,8).map(q => ({ question: q.keyword, volume: q.volume||0 }));\nconst lsiTop = related.filter(k => (k.keyword_difficulty||99)<30 && (k.volume||0)>100).sort((a,b)=>(b.volume||0)-(a.volume||0)).slice(0,15).map(k=>({keyword:k.keyword,volume:k.volume||0,kd:k.keyword_difficulty||null}));\nconst alsoTop = alsoRank.sort((a,b)=>(b.volume||0)-(a.volume||0)).slice(0,10).map(k=>({keyword:k.keyword,volume:k.volume||0}));\n\nconst ahrefs_research = {\n  keyword_metrics: {\n    volume: overview.volume||null,\n    keyword_difficulty: overview.keyword_difficulty||null,\n    traffic_potential: overview.traffic_potential||null,\n    cpc: overview.cpc||null,\n    global_volume: overview.global_volume||null,\n    parent_topic: overview.parent_topic||null,\n    search_intent: overview.search_intent||null\n  },\n  serp_benchmarks: {\n    avg_word_count: avgWords||null,\n    avg_h2_count: avgH2||null,\n    pct_with_faq: totalSerp ? +(withFaq/totalSerp).toFixed(2) : null,\n    has_featured_snippet: hasFs,\n    serp_top3_titles: serpFiltered.slice(0,3).map(r=>r.title).filter(Boolean),\n    competitors_filtered_out: safeArr(serpRaw).length - serpFiltered.length\n  },\n  recommended_structure: {\n    target_word_count: avgWords||1500,\n    suggested_h2_count: avgH2||5,\n    faq_required: totalSerp ? (withFaq/totalSerp)>=0.6 : true,\n    featured_snippet_target: hasFs\n  },\n  faq_questions: faqTop,\n  lsi_keywords: lsiTop,\n  also_rank_for: alsoTop,\n  data_fetched_at: new Date().toISOString(),\n  ahrefs_credits_used: 5,\n  ahrefs_partial_failure: !overview.volume && serpFiltered.length === 0\n};\n\n// Recover original payload (from Preparar contexto node) and add ahrefs_research to brief_final\nconst originalPayload = $('Ahrefs: Preparar contexto').first().json;\nconst { _ahrefs_ctx, _ahrefs_skip, ...rest } = originalPayload;\n\nreturn [{ json: { ...rest, brief_final: { ...rest.brief_final, ahrefs_research } } }];"
+      }
+    },
+    {
+      "id": "sgci-node-s020",
+      "name": "Supabase: Guardar Content Item1",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [5100, 1664],
+      "parameters": {
+        "operation": "update",
+        "tableId": "content_items",
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.db_record.id }}"
+            }
+          ]
+        },
+        "dataToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "brief_data",
+              "fieldValue": "={{ JSON.stringify($json.brief_final) }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "brief_ready"
+            },
+            {
+              "fieldId": "updated_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Frontend Brief1": {
+      "main": [
+        [{ "node": "Supabase Query Context1", "type": "main", "index": 0 }]
+      ]
+    },
+    "Supabase Query Context1": {
+      "main": [
+        [{ "node": "Preparar Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "Preparar Data": {
+      "main": [
+        [{ "node": "Buscar en Google", "type": "main", "index": 0 }]
+      ]
+    },
+    "Buscar en Google": {
+      "main": [
+        [{ "node": "AI Agent", "type": "main", "index": 0 }]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [{ "node": "Procesar SERP", "type": "main", "index": 0 }]
+      ]
+    },
+    "Procesar SERP": {
+      "main": [
+        [{ "node": "Separar URLs para Jina", "type": "main", "index": 0 }]
+      ]
+    },
+    "Separar URLs para Jina": {
+      "main": [
+        [{ "node": "Read URL content1", "type": "main", "index": 0 }]
+      ]
+    },
+    "Read URL content1": {
+      "main": [
+        [{ "node": "Agrupar Contenido Raspado", "type": "main", "index": 0 }]
+      ]
+    },
+    "Agrupar Contenido Raspado": {
+      "main": [
+        [{ "node": "Extraer Contexto para Redactor", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extraer Contexto para Redactor": {
+      "main": [
+        [{ "node": "Analizar SERP con IA", "type": "main", "index": 0 }]
+      ]
+    },
+    "Analizar SERP con IA": {
+      "main": [
+        [{ "node": "Agente Estratega (Data-Driven)1", "type": "main", "index": 0 }]
+      ]
+    },
+    "Agente Estratega (Data-Driven)1": {
+      "main": [
+        [{ "node": "Agente Arquitecto", "type": "main", "index": 0 }]
+      ]
+    },
+    "Agente Arquitecto": {
+      "main": [
+        [{ "node": "Validar Blueprint", "type": "main", "index": 0 }]
+      ]
+    },
+    "Validar Blueprint": {
+      "main": [
+        [{ "node": "sanitize-competitors", "type": "main", "index": 0 }]
+      ]
+    },
+    "sanitize-competitors": {
+      "main": [
+        [{ "node": "inject-brand-contract", "type": "main", "index": 0 }]
+      ]
+    },
+    "inject-brand-contract": {
+      "main": [
+        [{ "node": "Ahrefs: Preparar contexto", "type": "main", "index": 0 }]
+      ]
+    },
+    "Ahrefs: Preparar contexto": {
+      "main": [
+        [
+          { "node": "Ahrefs: Keyword Overview", "type": "main", "index": 0 },
+          { "node": "Ahrefs: SERP Overview", "type": "main", "index": 0 },
+          { "node": "Ahrefs: Questions (PAA)", "type": "main", "index": 0 },
+          { "node": "Ahrefs: Related Terms", "type": "main", "index": 0 },
+          { "node": "Ahrefs: Also Rank For", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Ahrefs: Keyword Overview": {
+      "main": [
+        [{ "node": "Merge Ahrefs", "type": "main", "index": 0 }]
+      ]
+    },
+    "Ahrefs: SERP Overview": {
+      "main": [
+        [{ "node": "Merge Ahrefs", "type": "main", "index": 0 }]
+      ]
+    },
+    "Ahrefs: Questions (PAA)": {
+      "main": [
+        [{ "node": "Merge Ahrefs", "type": "main", "index": 0 }]
+      ]
+    },
+    "Ahrefs: Related Terms": {
+      "main": [
+        [{ "node": "Merge Ahrefs", "type": "main", "index": 0 }]
+      ]
+    },
+    "Ahrefs: Also Rank For": {
+      "main": [
+        [{ "node": "Merge Ahrefs", "type": "main", "index": 0 }]
+      ]
+    },
+    "Merge Ahrefs": {
+      "main": [
+        [{ "node": "Ahrefs: Normalizar", "type": "main", "index": 0 }]
+      ]
+    },
+    "Ahrefs: Normalizar": {
+      "main": [
+        [{ "node": "Supabase: Guardar Content Item1", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": ["seo", "content", "ahrefs", "swarm"],
+  "triggerCount": 1,
+  "updatedAt": "2026-05-19T00:00:00.000Z",
+  "versionId": "ahrefs-v2"
+}
