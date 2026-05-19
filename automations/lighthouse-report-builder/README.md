@@ -150,9 +150,92 @@ SeoLab Informes SEO/
   └── ...
 ```
 
+## Edge Function: `lighthouse-slack-notifier` (agent_7)
+
+Última pieza del pipeline. Cuando el Google Doc está listo en Drive (file_path en `reports`), este agent envía un mensaje por Slack:
+
+- **DM directo al especialista** (resuelto vía `public.users.slack_id` del `created_by`)
+- **Copia al canal del equipo** (`#informes-seo` por default, configurable)
+
+### Formato del mensaje (Slack Block Kit)
+
+```
+┌─────────────────────────────────────────────┐
+│ 📊 Informe SEO listo: Mercado Libre         │
+├─────────────────────────────────────────────┤
+│ Hola Juan, tu análisis de Mercado Libre     │
+│ terminó.                                     │
+│                                              │
+│ Dominio:           mercadolibre.com.co       │
+│ Versión:           v1                        │
+│ Tráfico estimado:  1,112,794/mes             │
+│ Valor de tráfico:  $7,057,266 USD/mes        │
+│ Risk level:        🔴 critical (200/1000)    │
+│ Findings:          2 detectados              │
+│                                              │
+│           [ 📄 Abrir en Google Docs ]        │
+│                                              │
+│ SeoLab Agency · Lighthouse · 19 may, 13:42   │
+└─────────────────────────────────────────────┘
+```
+
+### Manejo de casos edge
+
+| Situación | Comportamiento |
+|---|---|
+| `created_by` es null | Solo envía al canal (sin DM) |
+| `slack_id` mal formateado (con `\n`, espacios) | Sanitiza automáticamente con regex |
+| `slack_id` inválido | Skip DM, envía solo al canal con tag de fallback |
+| `report_status = generated_partial` | Header cambia a "⚠ Informe parcial" + context block explicativo |
+| `published_at` ya seteado | Skip silencioso (idempotente, salvo `resend: true`) |
+| Slack API falla | Reintenta canal aunque el DM haya fallado; loguea error |
+
+### Uso
+
+```bash
+curl -X POST https://stjugsrkrweakvzmizpq.supabase.co/functions/v1/lighthouse-slack-notifier \
+  -H "x-internal-secret: <tu-secreto>" \
+  -H "Content-Type: application/json" \
+  -d '{"report_id":"9edef3cc-d032-4dcb-b4eb-e7d67bfad4d3"}'
+```
+
+Devuelve:
+```json
+{
+  "ok": true,
+  "report_id": "...",
+  "sent_to": [
+    { "channel": "U052S26EJTY", "ts": "1747856...", "fallback_used": false },
+    { "channel": "informes-seo", "ts": "1747857...", "fallback_used": false }
+  ],
+  "specialist_dm_resolved": true,
+  "is_partial": false,
+  "published_at": "2026-05-19T18:40:00.000Z"
+}
+```
+
+## Watchdog automático (pg_cron)
+
+La migration `003_watchdog_full_pipeline.sql` instala una función que cada 2 minutos:
+
+1. Detecta orquestaciones completas sin report → dispara `agent_6`
+2. Detecta reports sin file_path → dispara `exporter`
+3. Detecta reports con file_path sin published_at → dispara `agent_7`
+
+Esto garantiza que **ningún informe quede colgado** aunque alguno de los 3 pasos falle puntualmente.
+
+Para monitorear: `SELECT * FROM ahrefs_web_analysis.v_pipeline_health;`
+
+```
+ orphans_without_report | reports_without_doc | docs_without_slack | notified_last_24h
+------------------------+---------------------+--------------------+-------------------
+                      0 |                   2 |                  0 |                 0
+```
+
 ## Próximos pasos (no en este sprint)
 
-1. **Hookear el exporter al botón "Descargar Google Doc"** del frontend (Vite/React).
-2. **Caching de prompts** del agent_6: usar prompt caching de Anthropic para reducir costo al 90% en re-runs.
-3. **Sección 7 opcional**: análisis competitivo (requiere ingesta de SERP overview de Ahrefs).
-4. **Plantilla Google Docs nativa**: en vez de HTML upload, copiar un Google Doc maestro vía Drive API y usar Docs API `batchUpdate` con `replaceAllText` para fidelidad total de portada/headers/footers.
+1. **Hookear desde `ahrefs-total-orchestrator`**: invocar agent_6 → exporter → agent_7 en cadena. Cambio en el repo del orquestador.
+2. **UI del frontend**: 2 botones de descarga (markdown / Google Doc) + polling staged sobre `analysis_run_events`. Cambio en `light-house-app-agency-main`.
+3. **agent_8 (user-enrichment)**: cuando se crea un usuario en `public.users`, un agente busca su `slack_id` desde el workspace de Slack y completa otros datos (timezone, foto, role) automáticamente. Elimina el problema de slack_ids faltantes / mal formateados.
+4. **Plantilla Google Docs nativa**: en vez de HTML upload, copiar un Google Doc maestro vía Drive API y usar Docs API `batchUpdate` para fidelidad total.
+5. **Notificación al cliente**: opcional, mandar al cliente un email (no Slack) con el link al doc cuando el especialista lo apruebe.

@@ -17,6 +17,8 @@ Este documento explica **dónde vive cada secreto** y **cómo configurarlo**.
 | `GOOGLE_CALENDAR_CLIENT_SECRET` | google-docs-exporter | `supabase secrets set` | OAuth client secret. |
 | `GOOGLE_DOCS_REFRESH_TOKEN` | google-docs-exporter | `supabase secrets set` | Refresh token para Drive API. |
 | `LIGHTHOUSE_DRIVE_ROOT` | google-docs-exporter (opcional) | `supabase secrets set` | Carpeta raíz en Drive. Default `SeoLab Informes SEO`. |
+| `SLACK_BOT_TOKEN` | slack-notifier | `supabase secrets set` | Bot token `xoxb-...` con scopes `chat:write` + `chat:write.public`. |
+| `LIGHTHOUSE_SLACK_CHANNEL` | slack-notifier (opcional) | `supabase secrets set` | Canal del equipo donde se copia cada informe. Default `informes-seo`. |
 
 ## Cómo configurar
 
