@@ -1,0 +1,382 @@
+diff --git a/src/components/agenda/ClientSearchSelect.tsx b/src/components/agenda/ClientSearchSelect.tsx
+index 2e6294e..ed9c333 100644
+--- a/src/components/agenda/ClientSearchSelect.tsx
++++ b/src/components/agenda/ClientSearchSelect.tsx
+@@ -57,7 +57,7 @@ export function ClientSearchSelect({ value, onChange, error }: ClientSearchSelec
+   useEffect(() => {
+     if (value && !clients.some(c => c.id === value)) {
+       supabase.from('clients').select('id, name, whatsapp_phone, address, urgency').eq('id', value).single()
+-        .then(({ data }) => {
++        .then(({ data }: { data: any }) => {
+           if (data) setSelectedClientData(data);
+         });
+     } else if (!value) {
+diff --git a/src/components/agenda/NewAppointmentModal.tsx b/src/components/agenda/NewAppointmentModal.tsx
+index a180650..e5dbf6f 100644
+--- a/src/components/agenda/NewAppointmentModal.tsx
++++ b/src/components/agenda/NewAppointmentModal.tsx
+@@ -154,7 +154,7 @@ export function NewAppointmentModal({
+                   <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                     {formatSentenceCase("Comercial asignado")} <span className="text-primary">*</span>
+                   </label>
+-                  <Select value={staffId} onValueChange={setStaffId}>
++                  <Select value={staffId} onValueChange={(v) => v != null && setStaffId(v)}>
+                     <SelectTrigger className="bg-background border-border/50 h-14 rounded-none focus:ring-primary font-bold">
+                       <SelectValue placeholder={isLoadingStaff ? formatSentenceCase("Cargando...") : formatSentenceCase("Seleccionar comercial...")}>
+                           {staffId 
+@@ -192,7 +192,7 @@ export function NewAppointmentModal({
+                         setDate(d);
+                         setSlotId(''); // reset slot when date changes
+                       }}
+-                      disabled={(date) => {
++                      disabled={(date: Date) => {
+                         const day = date.getDay();
+                         return day !== 2 && day !== 4; // Solo Martes (2) y Jueves (4)
+                       }}
+diff --git a/src/components/shared/CategoryHeader.tsx b/src/components/shared/CategoryHeader.tsx
+index 33fe1b2..b19be71 100644
+--- a/src/components/shared/CategoryHeader.tsx
++++ b/src/components/shared/CategoryHeader.tsx
+@@ -11,7 +11,7 @@ import { PrimaryButton } from "@/components/shared/PrimaryButton";
+ 
+ interface CategoryHeaderProps {
+   title: string;
+-  subtitle?: string;
++  subtitle?: React.ReactNode;
+   icon: LucideIcon;
+   onBack?: () => void;
+   hideBack?: boolean;
+diff --git a/src/components/shared/DeleteFlow.tsx b/src/components/shared/DeleteFlow.tsx
+index ac564b7..aaa77e3 100644
+--- a/src/components/shared/DeleteFlow.tsx
++++ b/src/components/shared/DeleteFlow.tsx
+@@ -50,7 +50,7 @@ export function DeleteFlow({
+   return (
+     <>
+       {trigger ? (
+-        React.cloneElement(trigger as React.ReactElement, {
++        React.cloneElement(trigger as React.ReactElement<any>, {
+           onClick: (e: React.MouseEvent) => {
+             e.stopPropagation();
+             setIsModalOpen(true);
+diff --git a/src/components/tareas/NewTaskModal.tsx b/src/components/tareas/NewTaskModal.tsx
+index 4c4216c..6575651 100644
+--- a/src/components/tareas/NewTaskModal.tsx
++++ b/src/components/tareas/NewTaskModal.tsx
+@@ -84,8 +84,9 @@ export function NewTaskModal({ isOpen, onClose, staff, defaultStatus = 'pendient
+         ...formData,
+         estimated_hours: formData.estimated_hours ? parseFloat(formData.estimated_hours) : null,
+         status: defaultStatus as TaskStatus,
+-        kanban_order: 0
+-      });
++        kanban_order: 0,
++        tags: [] as string[],
++      } as any);
+       notify.success(formatSentenceCase("Tarea creada"), formatSentenceCase("La tarea ha sido creada exitosamente"));
+       onClose();
+       resetForm();
+diff --git a/src/components/tareas/TaskDetailPanel.tsx b/src/components/tareas/TaskDetailPanel.tsx
+index 0e29aac..4f6e41e 100644
+--- a/src/components/tareas/TaskDetailPanel.tsx
++++ b/src/components/tareas/TaskDetailPanel.tsx
+@@ -32,7 +32,7 @@ export function TaskDetailPanel({ task, isOpen, onClose, staff, canEditStatus, c
+   const handleStatusChange = async (newStatus: string | null) => {
+     if (!newStatus) return;
+     setIsUpdatingStatus(true);
+-    await updateTask.mutateAsync({ id: task.id, updates: { status: newStatus } });
++    await updateTask.mutateAsync({ id: task.id, updates: { status: newStatus as any } });
+     setIsUpdatingStatus(false);
+   };
+ 
+diff --git a/src/features/hardware/HardwareModule.tsx b/src/features/hardware/HardwareModule.tsx
+index 14c7ff7..fba2023 100644
+--- a/src/features/hardware/HardwareModule.tsx
++++ b/src/features/hardware/HardwareModule.tsx
+@@ -183,7 +183,7 @@ export const HardwareModule: React.FC<HardwareModuleProps> = ({ onDataChange, in
+ 
+           <div className="md:col-span-2 space-y-2">
+             <label className="text-[10px] font-black text-primary uppercase tracking-widest">Seleccionar Herraje</label>
+-            <Select value={currentItemId} onValueChange={setCurrentItemId}>
++            <Select value={currentItemId} onValueChange={(v) => v != null && setCurrentItemId(v)}>
+               <SelectTrigger className="h-12 bg-background border-border/40 text-xs font-bold rounded-none">
+                 <SelectValue placeholder="Selecciona un producto..." />
+               </SelectTrigger>
+diff --git a/src/features/mesones/MesonesModule.tsx b/src/features/mesones/MesonesModule.tsx
+index bd25915..537b44b 100644
+--- a/src/features/mesones/MesonesModule.tsx
++++ b/src/features/mesones/MesonesModule.tsx
+@@ -299,7 +299,7 @@ function MesonRow({ item, calc, onChange, onRemove, index }: MesonRowProps) {
+               </label>
+               <Select
+                 value={String(item.alturaLateral ?? 0)}
+-                onValueChange={(v) => onChange('alturaLateral', parseInt(v) as BarraLateralAltura)}
++                onValueChange={(v) => onChange('alturaLateral', v != null ? (parseInt(v) as BarraLateralAltura) : 0)}
+               >
+                 <SelectTrigger className="h-8 w-32 bg-background border-border/40 text-xs font-bold rounded-none">
+                   <SelectValue />
+diff --git a/src/hooks/notifications/useRealtimeNotifications.ts b/src/hooks/notifications/useRealtimeNotifications.ts
+index 055063b..2f7657b 100644
+--- a/src/hooks/notifications/useRealtimeNotifications.ts
++++ b/src/hooks/notifications/useRealtimeNotifications.ts
+@@ -21,7 +21,7 @@ export function useRealtimeNotifications() {
+           table: 'notifications',
+           filter: `user_id=eq.${user.id}`,
+         },
+-        (payload) => {
++        (payload: any) => {
+           // Toast for the new notification
+           const newNotif = payload.new;
+           notify.info("Nueva notificación", newNotif.title);
+diff --git a/src/lib/errors.ts b/src/lib/errors.ts
+index f4f98f3..7088604 100644
+--- a/src/lib/errors.ts
++++ b/src/lib/errors.ts
+@@ -25,7 +25,7 @@ export type AppErrorCode =
+ 
+ export class AppError extends Error {
+   code: AppErrorCode;
+-  cause?: unknown;
++  override cause?: unknown;
+   /** Original Postgres / Supabase error code if available (e.g. "PGRST301", "42501", "23505"). */
+   pgCode?: string;
+   /** Whether this is something the user can act on (vs. a server bug). */
+diff --git a/src/lib/supabaseClient.ts b/src/lib/supabaseClient.ts
+index 5cb9c35..6629c11 100644
+--- a/src/lib/supabaseClient.ts
++++ b/src/lib/supabaseClient.ts
+@@ -43,7 +43,7 @@ export const supabase = (supabaseUrl && supabaseAnonKey)
+ 
+ // Listener global para purgar estado corrupto si Supabase emite un error de Refresh Token
+ if (supabase) {
+-  supabase.auth.onAuthStateChange(async (event, session) => {
++  supabase.auth.onAuthStateChange(async (event: any, session: any) => {
+     if (event === 'SIGNED_OUT') {
+       localStorage.removeItem('innovar-auth-token');
+     }
+diff --git a/src/pages/Clients.tsx b/src/pages/Clients.tsx
+index e7f96a1..4422138 100644
+--- a/src/pages/Clients.tsx
++++ b/src/pages/Clients.tsx
+@@ -180,7 +180,7 @@ export default function ClientsPage() {
+     >
+       <DetailModal
+         open={!!selectedClient}
+-        onOpenChange={(open) => !open && setSelectedClient(null)}
++        onOpenChange={(open: boolean) => !open && setSelectedClient(null)}
+         title={selectedClient?.name || ""}
+         icon={User}
+         subtitle={formatSentenceCase(`Cliente ID: ${selectedClient?.id}`)}
+diff --git a/src/pages/FinancialCreate.tsx b/src/pages/FinancialCreate.tsx
+index d05b562..97e1291 100644
+--- a/src/pages/FinancialCreate.tsx
++++ b/src/pages/FinancialCreate.tsx
+@@ -74,7 +74,7 @@ export default function FinancialCreate() {
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+             <div className="space-y-2">
+               <label className="text-xs font-bold text-muted-foreground">{formatSentenceCase("Tipo de movimiento")} *</label>
+-              <Select value={movement.type} onValueChange={(v) => setMovement({...movement, type: v})}>
++              <Select value={movement.type} onValueChange={(v) => v != null && setMovement({...movement, type: v})}>
+                 <SelectTrigger className="h-12 rounded-none border-border/50 bg-background font-bold text-xs">
+                   <SelectValue placeholder={formatSentenceCase("Seleccionar...")}>
+                     {movement.type ? formatSentenceCase(MOVEMENT_TYPES.find(t => t.value === movement.type)?.label || movement.type) : undefined}
+diff --git a/src/pages/Inventory.tsx b/src/pages/Inventory.tsx
+index 14ae6c8..ae3a9c5 100644
+--- a/src/pages/Inventory.tsx
++++ b/src/pages/Inventory.tsx
+@@ -376,7 +376,7 @@ export default function InventoryPage() {
+ 
+       <DetailModal
+         open={!!selectedItem}
+-        onOpenChange={(open) => !open && setSelectedItem(null)}
++        onOpenChange={(open: boolean) => !open && setSelectedItem(null)}
+         title={selectedItem?.name || ""}
+         icon={Package}
+         subtitle={`Categoría: ${selectedItem?.category || "—"}`}
+diff --git a/src/pages/Leads.tsx b/src/pages/Leads.tsx
+index a4766c7..f76596e 100644
+--- a/src/pages/Leads.tsx
++++ b/src/pages/Leads.tsx
+@@ -178,7 +178,7 @@ export default function LeadsPage() {
+     >
+       <DetailModal
+         open={!!selectedLead}
+-        onOpenChange={(open) => !open && setSelectedLead(null)}
++        onOpenChange={(open: boolean) => !open && setSelectedLead(null)}
+         title={selectedLead?.name || ""}
+         icon={Zap}
+         subtitle={formatSentenceCase(`CONFIGURACIÓN > SOLICITUDES > ${selectedLead?.name}`)}
+@@ -269,7 +269,7 @@ export default function LeadsPage() {
+                 displayValue={(() => {
+                   const u = selectedLead?.urgency;
+                   if (!u) return <span className="text-sm font-bold text-muted-foreground italic">{formatSentenceCase("Normal / No definida")}</span>;
+-                  const normalizedKey = u === "ASAP" ? "high" : u === "SHORT" ? "medium" : u === "LON" ? "low" : u;
++                  const normalizedKey = (u as string) === "ASAP" ? "high" : (u as string) === "SHORT" ? "medium" : (u as string) === "LON" ? "low" : u;
+                   const config = urgencyMap[normalizedKey] || { label: u, variant: "info" };
+                   return (
+                     <StatusBadge variant={config.variant as any} dot animate={normalizedKey === "high" ? "pulse" : "scale"} className="py-1">
+diff --git a/src/pages/MaterialCreate.tsx b/src/pages/MaterialCreate.tsx
+index 322faf0..34f5fed 100644
+--- a/src/pages/MaterialCreate.tsx
++++ b/src/pages/MaterialCreate.tsx
+@@ -70,7 +70,8 @@ export default function MaterialCreatePage() {
+       await createItem({
+         ...data,
+         photoUrl: data.photoUrl || `https://picsum.photos/seed/${data.name}/200/200`,
+-        sortOrder: items.length + 1
++        sortOrder: items.length + 1,
++        stock: 0,
+       });
+       toast.success("Material creado correctamente");
+       navigate("/settings/materials");
+@@ -212,7 +213,7 @@ export default function MaterialCreatePage() {
+                           URL de Imagen (Opcional)
+                         </FormLabel>
+                         <FormControl>
+-                          <Input {...field} className="bg-background/50 border-border/50 rounded-none h-12 focus-visible:ring-primary" placeholder="https://..." />
++                          <Input {...field} value={field.value ?? ''} className="bg-background/50 border-border/50 rounded-none h-12 focus-visible:ring-primary" placeholder="https://..." />
+                         </FormControl>
+                         <FormMessage className="text-[10px] uppercase font-bold text-destructive" />
+                       </FormItem>
+diff --git a/src/pages/Pagos.tsx b/src/pages/Pagos.tsx
+index d4405a9..e58e747 100644
+--- a/src/pages/Pagos.tsx
++++ b/src/pages/Pagos.tsx
+@@ -93,7 +93,7 @@ export default function PagosPage() {
+           <div className="space-y-8">
+             <div className="space-y-2">
+               <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{formatSentenceCase("Proyecto")}</label>
+-              <Select value={filters.project_id} onValueChange={v => setFilters({...filters, project_id: v})}>
++              <Select value={filters.project_id} onValueChange={v => v != null && setFilters({...filters, project_id: v})}>
+                 <SelectTrigger className="rounded-none border-border/30 font-bold h-10">
+                   <SelectValue placeholder="Seleccionar proyecto" />
+                 </SelectTrigger>
+@@ -108,7 +108,7 @@ export default function PagosPage() {
+ 
+             <div className="space-y-2">
+               <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{formatSentenceCase("Método de Pago")}</label>
+-              <Select value={filters.payment_method} onValueChange={v => setFilters({...filters, payment_method: v})}>
++              <Select value={filters.payment_method} onValueChange={v => v != null && setFilters({...filters, payment_method: v})}>
+                 <SelectTrigger className="rounded-none border-border/30 font-bold h-10">
+                   <SelectValue placeholder="Seleccionar método" />
+                 </SelectTrigger>
+@@ -127,7 +127,7 @@ export default function PagosPage() {
+ 
+             <div className="space-y-2">
+               <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{formatSentenceCase("Tipo de Pago")}</label>
+-              <Select value={filters.payment_type} onValueChange={v => setFilters({...filters, payment_type: v})}>
++              <Select value={filters.payment_type} onValueChange={v => v != null && setFilters({...filters, payment_type: v})}>
+                 <SelectTrigger className="rounded-none border-border/30 font-bold h-10">
+                   <SelectValue placeholder="Seleccionar tipo" />
+                 </SelectTrigger>
+diff --git a/src/pages/Quotations.tsx b/src/pages/Quotations.tsx
+index 458451f..870a798 100644
+--- a/src/pages/Quotations.tsx
++++ b/src/pages/Quotations.tsx
+@@ -272,7 +272,7 @@ export default function QuotationsPage() {
+ 
+       <DetailModal
+         open={!!selectedQuotation}
+-        onOpenChange={(open) => !open && setSelectedQuotation(null)}
++        onOpenChange={(open: boolean) => !open && setSelectedQuotation(null)}
+         title={`Cotización ${selectedQuotation?.id?.split('-')[0] || ""}`}
+         icon={FileText}
+         subtitle={formatSentenceCase(`VENTAS > COTIZACIONES > ${selectedQuotation?.client?.name || "CLIENTE"}`)}
+diff --git a/src/pages/Tareas.tsx b/src/pages/Tareas.tsx
+index dc7756d..4e450bb 100644
+--- a/src/pages/Tareas.tsx
++++ b/src/pages/Tareas.tsx
+@@ -150,7 +150,7 @@ export default function TareasPage() {
+       {view === 'list' && isAdmin && selectedTaskIds.length > 0 && (
+         <div className="bg-primary/10 border border-primary/20 rounded-md p-3 flex items-center gap-4">
+           <span className="text-sm font-medium text-primary ml-2">{selectedTaskIds.length} seleccionadas</span>
+-          <Select onValueChange={handleBulkStatus}>
++          <Select onValueChange={(v: string | null) => { if (v !== null) handleBulkStatus(v); }}>
+             <SelectTrigger className="w-[180px] h-8 text-xs bg-background">
+               <SelectValue placeholder="Cambiar estado" />
+             </SelectTrigger>
+diff --git a/src/pages/settings/Audit.tsx b/src/pages/settings/Audit.tsx
+index 76aaf2e..eb20eb2 100644
+--- a/src/pages/settings/Audit.tsx
++++ b/src/pages/settings/Audit.tsx
+@@ -217,7 +217,7 @@ export default function AuditSettingsPage() {
+ 
+       <DetailModal
+         open={!!selectedLog}
+-        onOpenChange={(open) => !open && setSelectedLog(null)}
++        onOpenChange={(open: boolean) => !open && setSelectedLog(null)}
+         title="Detalle de Evento"
+         icon={History}
+         subtitle={`Log ID: ${selectedLog?.id}`}
+diff --git a/src/pages/settings/Maintenance.tsx b/src/pages/settings/Maintenance.tsx
+index 52ba2d0..223672f 100644
+--- a/src/pages/settings/Maintenance.tsx
++++ b/src/pages/settings/Maintenance.tsx
+@@ -366,7 +366,7 @@ CREATE TABLE IF NOT EXISTS quotation_items (
+ 
+       <DetailModal
+         open={!!selectedBackup}
+-        onOpenChange={(open) => !open && setSelectedBackup(null)}
++        onOpenChange={(open: boolean) => !open && setSelectedBackup(null)}
+         title="Detalle de Respaldo"
+         icon={Database}
+         subtitle={`ID: ${selectedBackup?.id}`}
+diff --git a/src/pages/settings/Materials.tsx b/src/pages/settings/Materials.tsx
+index dd2705f..8cbc337 100644
+--- a/src/pages/settings/Materials.tsx
++++ b/src/pages/settings/Materials.tsx
+@@ -95,7 +95,7 @@ const columns: ColumnDef<HardwareItem>[] = [
+     header: "Imagen",
+     cell: ({ row }) => (
+       <div className="h-10 w-10 bg-muted rounded-sm overflow-hidden border border-border/30">
+-        <img src={row.original.photoUrl || null} alt={row.original.name} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
++        <img src={row.original.photoUrl || undefined} alt={row.original.name} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+       </div>
+     ),
+   },
+@@ -259,7 +259,7 @@ export default function MaterialsSettingsPage() {
+           <div className="grid grid-cols-2 gap-x-12 gap-y-8 pb-8">
+             <div className="col-span-2 flex justify-center mb-4">
+               <div className="h-48 w-48 bg-muted rounded-sm border border-border/10 overflow-hidden relative group">
+-                <img src={selectedItem?.photoUrl || null} alt={selectedItem?.name} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
++                <img src={selectedItem?.photoUrl || undefined} alt={selectedItem?.name} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                   <Button variant="outline" className="text-white border-white/40 hover:bg-white/10 text-[10px] font-bold uppercase tracking-widest">Cambiar Imagen</Button>
+                 </div>
+diff --git a/src/pages/settings/Users.tsx b/src/pages/settings/Users.tsx
+index 2023fa1..f4704df 100644
+--- a/src/pages/settings/Users.tsx
++++ b/src/pages/settings/Users.tsx
+@@ -94,6 +94,7 @@ interface UserRecord {
+   isTeamMember: boolean;
+   lastSignedIn: string;
+   status: 'active' | 'inactive';
++  createdAt?: string;
+ }
+ 
+ const roleMap: Record<UserRecord['role'], { label: string; color: string }> = {
+diff --git a/src/pages/settings/WhatsApp.tsx b/src/pages/settings/WhatsApp.tsx
+index 723a579..f92e9c1 100644
+--- a/src/pages/settings/WhatsApp.tsx
++++ b/src/pages/settings/WhatsApp.tsx
+@@ -255,7 +255,7 @@ export default function WhatsAppSettingsPage() {
+ 
+       <DetailModal
+         open={!!selectedMessage}
+-        onOpenChange={(open) => !open && setSelectedMessage(null)}
++        onOpenChange={(open: boolean) => !open && setSelectedMessage(null)}
+         title={selectedMessage?.recipient_name || "Detalle del Mensaje"}
+         icon={MessageSquare}
+         subtitle={formatSentenceCase(`WHATSAPP > TRAZABILIDAD > ID: ${selectedMessage?.id.slice(0, 8)}`)}
+diff --git a/src/store/authStore.ts b/src/store/authStore.ts
+index e0a9d8f..213a442 100644
+--- a/src/store/authStore.ts
++++ b/src/store/authStore.ts
+@@ -131,7 +131,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
+       }
+ 
+       // Subscribe to auth state changes (login/logout/token-refresh).
+-      supabase.auth.onAuthStateChange(async (event, session) => {
++      supabase.auth.onAuthStateChange(async (event: any, session: any) => {
+         if (event === "SIGNED_OUT" || event === "USER_DELETED") {
+           set({ user: null, profile: null });
+           return;

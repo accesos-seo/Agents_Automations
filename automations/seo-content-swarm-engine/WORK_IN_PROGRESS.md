@@ -10,6 +10,7 @@
 
 | Sesión | Área | Owner | Inicio | Tarea | Estado |
 |---|---|---|---|---|---|
+| S-008 | Diagnóstico transversal (A. Audio + C. Writer footer/FAQ) | Claude-chat-doug-fixflip | 2026-05-16 | Diagnosticar artículo Doug Construction "Mastering Fix and Flip": FAQ ausente, footer zone incompleto, audio no visible | en_curso |
 
 ---
 
