@@ -40,7 +40,32 @@ Frontend ya tiene datos → /seo/analisis/<id>/informe carga normalmente
 | 5 | `recovery_plan` | Plan en fases con métricas de éxito |
 | 6 | `appendix` | IDs técnicos + metodología + limitaciones |
 
-## Despliegue completo (las 4 edge functions)
+## 🚀 Despliegue (automático con PowerShell)
+
+Desde la raíz del repo en Windows:
+
+```powershell
+.\automations\lighthouse-report-builder\scripts\deploy-lighthouse.ps1
+```
+
+El script hace todo automáticamente:
+1. Verifica prerequisitos (Supabase CLI, git)
+2. `git pull` del último código
+3. Copia las 4 functions a `supabase/functions/` (estructura que el CLI espera)
+4. Linkea el proyecto Light_House (si no está linkeado)
+5. Genera `LIGHTHOUSE_REPORT_INTERNAL_SECRET` (random 64 chars hex) y lo muestra
+6. Pide los secretos faltantes (Slack token, OpenRouter, Google si hace falta)
+7. Despliega las 4 functions una por una
+8. Imprime los pasos SQL pendientes (Vault + cron) listos para copiar
+
+Al final muestra:
+- Cuántas funciones se desplegaron OK
+- El SQL exacto para correr en el Dashboard
+- Un curl de test end-to-end
+
+Idempotente: podés correrlo varias veces. Si los secretos ya existen, no los re-pide.
+
+## Despliegue completo manual (alternativa)
 
 ```bash
 # 1. Linkear el proyecto Light_House
