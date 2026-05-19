@@ -23,15 +23,25 @@ Agencia de SEO y automatizaciones (SEO Lab Agency). Trabaja con múltiples proye
 | `<PROYECTO>_SUPABASE_URL` + `<PROYECTO>_SERVICE_KEY` | Supabase | Acceso directo a la BD de cada proyecto |
 | `AHREFS_API_TOKEN` | Ahrefs | Investigación SEO (usado en seo-content-swarm-engine) |
 
+### Credenciales requeridas (valores actuales)
+
+| Variable | Valor / Ubicación |
+|---|---|
+| `N8N_TOKEN` | JWT — ver Environment vars del panel Claude Code on web |
+| `N8N_BASE_URL` | `https://estancias-atlas-n8n.heh8a3.easypanel.host` |
+| `SUPABASE_URL` (Light_House) | `https://stjugsrkrweakvzmizpq.supabase.co` |
+| `SUPABASE_SERVICE_KEY` (Light_House) | ver Environment vars del panel Claude Code on web |
+| `AHREFS_API_TOKEN` | ver Environment vars del panel Claude Code on web |
+
 ### Dónde viven las credenciales según el entorno
 
 - **App de escritorio (local Windows):** archivo `.env.shared` en la carpeta local. Cargar con `source .env.shared` antes de operar.
 - **Claude Code on web (contenedor remoto):** **NO existe `.env.shared`** porque el contenedor solo tiene lo que está en git. Las credenciales se inyectan vía:
-  1. **Environment variables del Environment** (recomendado, persistente entre sesiones)
+  1. **Environment variables del Environment** ← **SOLUCIÓN PERMANENTE**: agregar aquí todas las variables de la tabla de arriba para que estén disponibles en toda sesión sin pedirlas
   2. **MCP de Supabase** con PAT de la org correcta
-  3. **`.env.local` en el contenedor** (efímero, solo esa sesión, gitignored)
+  3. **`.env.local` en el contenedor** (efímero, solo esa sesión, gitignored) ← solución temporal por sesión
 
-> Si una credencial no aparece como env var en una sesión web, **pedirla al usuario** y guardarla en `.env.local` (gitignored). Avisar al usuario que la solución permanente es agregarla al Environment vía panel de Claude Code on web.
+> **Al inicio de cada sesión web:** verificar que `N8N_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` y `AHREFS_API_TOKEN` estén disponibles. Si falta alguna, pedirla y guardarla en `.env.local` antes de operar. Recordar al usuario que la solución permanente es agregarlas al Environment del panel de Claude Code on web.
 
 ### Restricciones de red en Claude Code on web
 
