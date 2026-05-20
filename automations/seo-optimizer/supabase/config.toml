@@ -1,0 +1,35 @@
+# Supabase CLI config — seo-optimizer module
+# Project: Light_House (stjugsrkrweakvzmizpq)
+#
+# This config exists so `supabase functions deploy` works from this folder.
+# Database migrations are NOT managed here (they're in ../01-database-migrations/
+# and were applied via MCP). This file only declares the edge functions.
+
+project_id = "stjugsrkrweakvzmizpq"
+
+[functions.seo-optimizer-orchestrator]
+verify_jwt = false       # We use x-internal-secret instead of Supabase JWT
+
+[functions.seo-optimizer-gsc-ingestor]
+verify_jwt = false
+
+[functions.seo-optimizer-article-ingestor]
+verify_jwt = false
+
+[functions.seo-optimizer-analyst]
+verify_jwt = false
+
+[functions.seo-optimizer-writer]
+verify_jwt = false
+
+[functions.seo-optimizer-dispatcher]
+verify_jwt = false
+
+[functions.seo-optimizer-outbox-worker]
+verify_jwt = false
+
+[functions.seo-optimizer-reeval]
+verify_jwt = false
+
+[functions.seo-optimizer-reeval-batch]
+verify_jwt = false
