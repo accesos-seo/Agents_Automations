@@ -256,6 +256,40 @@ Actualizar la memoria al final de cada sesión donde se haga trabajo significati
 
 ---
 
+## 15-bis. Data Hub centric (regla canónica desde 2026-05-20)
+
+**Toda data externa que cualquier automatización futura necesite, DEBE entrar primero al schema `seo_data_hub`.** Los consumidores (sistemas agénticos) leen del hub vía cross-schema SELECT con service-role, NUNCA pegan directo a APIs externas.
+
+Esta regla NO tiene excepciones. Implicaciones:
+
+| Si necesitás… | Hacés esto |
+|---|---|
+| Una fuente nueva (ej. Bing Webmaster Tools, Semrush, etc.) | 1) Agregás tabla raw a `seo_data_hub` con cadencia apropiada (weekly/monthly/manual). 2) Construís el ingestor `hub-<fuente>-<cadencia>`. 3) Recién después construís el consumer que lee de esa tabla. |
+| Una métrica nueva de una fuente existente | Extendés la tabla raw del hub para capturarla. NO agregás un consumer que hace un fetch lateral. |
+| Datos en tiempo real / streaming | Diseñás un endpoint del hub que recibe webhooks de la fuente. NUNCA conexión directa fuente → consumer. |
+| Backtesting o análisis ad-hoc | Leés del hub (los datos crudos viven ahí). Si no hay histórico suficiente, esperás o backfilleás al hub primero. |
+
+**Beneficios que NO se negocian:**
+- **Costo**: 1 sola llamada a Ahrefs/GSC/GA4 por período sirve a todos los sistemas. Sin esto, cada consumer paga su propia API.
+- **Consistencia**: 2 sistemas mirando la misma URL nunca van a ver clicks distintos.
+- **Failure isolation**: si el consumer X tiene bug, el hub sigue persistiendo data; cuando se arregla, el consumer reprocesa el histórico sin re-ingerir.
+- **Time-travel**: backtesting es trivial — el evaluator corre sobre data histórica del hub.
+- **Escalabilidad**: agregar el 5to consumer no agrega carga a las APIs externas.
+
+**Anti-patrón explícitamente prohibido:** un sistema agéntico que dentro de su edge function llama a `fetch('https://www.googleapis.com/...')` o `fetch('https://api.ahrefs.com/...')` directamente. Si querés data, va al hub primero.
+
+**Excepción única documentada:** webhooks entrantes (`hub-crawl-loader`, `hub-x-webhook`) reciben pushes desde el exterior y persisten al hub. No es lo mismo que un consumer pulleando de API.
+
+**Cómo onboardear una nueva fuente externa al hub:**
+1. Definir cadencia (cuán fresca necesitamos la data en términos de negocio)
+2. Estimar costo por corrida (créditos/quota) y multiplicarlo por cadencia/mes
+3. Diseñar schema de tabla raw (UNIQUE constraint para idempotencia, particionado por mes si volumen alto)
+4. Implementar `hub-<fuente>-<cadencia>` siguiendo patrón de los hub-* existentes
+5. Documentar en `automations/organic-early-warning/ARCHITECTURE.md` la nueva fuente (sección "Schema seo_data_hub")
+6. Actualizar `automations/organic-early-warning/SECRETS.md` con la API key nueva si aplica
+
+---
+
 ## 15. Reglas anti-spam para alertas
 
 Sistemas que mandan alertas siguen un modelo de severidad de **3 niveles**:
