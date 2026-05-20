@@ -1,5 +1,13 @@
 # lighthouse-report-builder (agent_6)
 
+> 🤝 **¿Estás aquí para resolver el bug "No user ID available" o integrar el frontend?**
+> Ir directo al paquete de handoff: [`handoff/`](./handoff/)
+> - [`00-DIAGNOSTICO-NO-USER-ID.md`](./handoff/00-DIAGNOSTICO-NO-USER-ID.md) — bug actual
+> - [`01-database-types.ts`](./handoff/01-database-types.ts) — tipos TS auto-generados
+> - [`02-edge-functions-contracts.md`](./handoff/02-edge-functions-contracts.md) — APIs HTTP
+> - [`03-validation-checklist.md`](./handoff/03-validation-checklist.md) — checklist E2E
+> - [`04-github-issue-body.md`](./handoff/04-github-issue-body.md) — issue listo para pegar
+
 Cierra el último gap del pipeline **Ahrefs Lighthouse**: convierte los datos crudos + diagnóstico + plan de recuperación en un informe estructurado de 6 secciones que el frontend `/seo/analisis/<id>/informe` consume.
 
 ## Por qué existe
