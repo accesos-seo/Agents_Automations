@@ -94,17 +94,20 @@ pg_cron (08:00 CO = 13:00 UTC daily)
     │  Build Block Kit (header + section fields + section summary + context)
     │
     │  Lookup destinatarios:
-    │    · CEO: Deno.env.get("CEO_SLACK_USER_ID") — DM en TODA alerta
-    │    · Brand team: SELECT FROM brand_team_routing WHERE brand_id
-    │    · Fallback: Deno.env.get("SLACK_FALLBACK_CHANNEL") si no hay routing
+    │    · Canal de la marca: SELECT slack_channel_id FROM brand_team_routing WHERE brand_id
+    │    · Fallback channel: Deno.env.get("SLACK_FALLBACK_CHANNEL") si no hay routing
+    │    · Especialista (DM): SELECT team_lead_user_id FROM brand_team_routing — opcional, solo si existe
     │
-    │  INSERT en public.notifications_outbox (hasta 3 rows por incident):
-    │    · CEO DM    → {target_type: 'slack_dm', channel_id: CEO_SLACK_USER_ID, dedupe_key: 'seo_sentinel:<incident_id>:v1:ceo_dm'}
+    │  INSERT en public.notifications_outbox (1 o 2 rows por incident):
     │    · Canal     → {target_type: 'slack_channel', channel_id: brand_channel, dedupe_key: 'seo_sentinel:<incident_id>:v1:channel:<channel_id>'}
+    │                  (canal de la marca o SLACK_FALLBACK_CHANNEL; en SeoLab: C0B1B3V4ZB5 #alerts-operaciones)
     │    · Esp. DM   → {target_type: 'slack_dm', channel_id: team_lead_user_id, dedupe_key: 'seo_sentinel:<incident_id>:v1:specialist_dm:<user_id>'}
-    │                  (solo si la marca tiene team_lead_user_id en brand_team_routing)
+    │                  (solo si la marca tiene team_lead_user_id configurado en brand_team_routing)
     │  Además, el block "Resumen" lleva mention <@team_lead> inline en el canal
     │  ON CONFLICT (dedupe_key) DO NOTHING
+    │
+    │  NOTA: No hay destinatario individual "global" (tipo CEO/director).
+    │  El especialista responsable se gestiona por-marca en brand_team_routing.
     │
     │  emit event 'alert_enqueued'
     │

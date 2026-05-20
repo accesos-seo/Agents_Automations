@@ -22,10 +22,11 @@ Sistema agéntico que **todos los días a las 08:00 hora Colombia** hace lo sigu
    - **Caídas de tráfico WoW** (clicks bajan ≥20% vs. el mismo día de la semana pasada)
    - **Pérdidas de posiciones** (un keyword que estaba en pos 5 ahora está en pos 25, o salió del top 10)
 3. Si encuentra una anomalía real (no festivo, no fin de semana, no falla de tracking), usa Claude vía OpenRouter para identificar el clúster temático afectado y resumir el incidente en 3 oraciones
-4. **Envía 3 mensajes a Slack** por cada incidente:
-   - DM al CEO
-   - Mensaje al canal **`alerts-operaciones`** (ID `C0B1B3V4ZB5`)
-   - DM al especialista responsable de la marca
+4. **Envía 1 o 2 mensajes a Slack** por cada incidente:
+   - Mensaje al canal **`#alerts-operaciones`** (ID `C0B1B3V4ZB5`) — siempre
+   - DM al **especialista responsable de la marca** (`brand_team_routing.team_lead_user_id`) — solo si está configurado para esa marca
+
+**Importante:** NO hay destinatario individual "global" tipo CEO/director. Cada marca tiene su propio especialista responsable, configurado en la BD por-marca.
 
 El flujo es **100% automático**. No hay frontend, no hay botones, no hay dashboards. La única interacción humana es **leer la alerta en Slack y actuar**.
 
@@ -109,9 +110,9 @@ Tabla con todo lo que tu IA va a pedirte. **Llenala antes de arrancar**, te ahor
 
 | Item | Pregunta a hacer / dónde encontrarlo | Formato |
 |---|---|---|
-| **CEO_SLACK_USER_ID** | Slack → click en el perfil del CEO → More (⋮) → "Copy member ID" | `U05ABC123` (11 chars empieza con `U`) |
+| **SLACK_FALLBACK_CHANNEL** | Canal fallback cuando una marca no tiene routing. Para SeoLab usamos el mismo canal de alertas: `C0B1B3V4ZB5` | `C0B1B3V4ZB5` (alerts-operaciones) |
 | **SLACK_ADMIN_CHANNEL** | Canal donde se notifican fallos del sistema (puede ser el mismo `C0B1B3V4ZB5` si no hay uno dedicado) | `C0XXXXXXXXX` |
-| **Por cada marca: especialista Slack User ID** | El líder/responsable SEO de esa cuenta. Mismo método que el CEO. | `U05XXXXXXXX` |
+| **Por cada marca: Slack User ID del especialista** | El líder/responsable SEO de esa cuenta. Slack → click en su perfil → More (⋮) → "Copy member ID". **Este es el único destinatario individual** — no hay CEO ni director global. | `U05XXXXXXXX` |
 
 ### C. Datos de cada marca (cliente)
 
@@ -153,7 +154,7 @@ Por cada cliente que vas a monitorear, necesitás:
 
 ### Tarea 2: Crear Slack Bot
 
-**Objetivo:** un bot que pueda enviar mensajes al canal `alerts-operaciones` y DMs al CEO + especialistas.
+**Objetivo:** un bot que pueda enviar mensajes al canal `#alerts-operaciones` y DMs a los especialistas responsables de cada marca.
 
 1. Ir a https://api.slack.com/apps → **Create New App** → **From scratch**
 2. Nombre: `seo-sentinel` | Workspace: **SeoLab Agency**
@@ -165,7 +166,7 @@ Por cada cliente que vas a monitorear, necesitás:
 5. En Slack:
    - Ir al canal `#alerts-operaciones` → escribir `/invite @seo-sentinel` y enviar
    - Si hay otros canales por marca (no es el caso ahora), invitar al bot también
-6. Para que el bot pueda mandarle DM al CEO, no necesitás nada extra (con `im:write` puede iniciar la conversación)
+6. Para que el bot pueda mandarle DM al especialista de cada marca, no necesitás nada extra (con `im:write` puede iniciar la conversación)
 
 **Resultado:** un token `xoxb-...`. Anotalo, va a Vault en Tarea 4.
 
@@ -182,7 +183,7 @@ Por cada cliente que vas a monitorear, necesitás:
 
 ---
 
-### Tarea 4: Cargar los 10 secretos en Supabase Vault
+### Tarea 4: Cargar los 9 secretos en Supabase Vault
 
 Ir a: https://supabase.com/dashboard/project/stjugsrkrweakvzmizpq/settings/vault/secrets
 
@@ -197,9 +198,10 @@ Por cada entry de abajo, clic en **"New Secret"** → llenar Name y Secret Value
 | 5 | `OPENROUTER_API_KEY` | `sk-or-...` | Tarea 3 |
 | 6 | `SEO_SENTINEL_MODEL` | `anthropic/claude-sonnet-4` | Fijo |
 | 7 | `SLACK_BOT_TOKEN` | `xoxb-...` | Tarea 2 |
-| 8 | `CEO_SLACK_USER_ID` | Slack User ID del CEO (ej. `U05ABC123`) | **PEDIR a accesos@seolabagency.com** |
-| 9 | `SLACK_FALLBACK_CHANNEL` | `C0B1B3V4ZB5` | ← **canal alerts-operaciones** confirmado |
-| 10 | `SLACK_ADMIN_CHANNEL` | `C0B1B3V4ZB5` (mismo que fallback, salvo que haya un canal admin/devs distinto) | **CONFIRMAR con accesos@seolabagency.com** si hay uno separado |
+| 8 | `SLACK_FALLBACK_CHANNEL` | `C0B1B3V4ZB5` | ← **canal alerts-operaciones** confirmado |
+| 9 | `SLACK_ADMIN_CHANNEL` | `C0B1B3V4ZB5` (mismo que fallback, salvo que haya un canal admin/devs distinto) | **CONFIRMAR con accesos@seolabagency.com** si hay uno separado |
+
+> **NO hay un secreto `CEO_SLACK_USER_ID`.** El destinatario individual de cada alerta es el **especialista responsable de la marca**, y se gestiona en la base de datos vía `seo_sentinel.brand_team_routing.team_lead_user_id` (una fila por marca, ver Tarea 5).
 
 **Importante:** ningún secreto debe quedar en `.env` local, en chats, ni en commits. Todos van solo a Vault.
 
@@ -353,9 +355,8 @@ Esta tarea está completa en `handoff/02-validation-checklist.md`. Lo crítico:
    ```
 
 3. **Verificar que Slack recibió la alerta** (solo si hubo anomalías):
-   - DM al CEO
-   - Mensaje en `#alerts-operaciones`
-   - DM al especialista de la marca
+   - Mensaje en `#alerts-operaciones` (canal `C0B1B3V4ZB5`)
+   - DM al especialista responsable de la marca (Slack User ID guardado en `brand_team_routing.team_lead_user_id`)
 
 4. Si **no hubo anomalías** (sistema sano), no aparecerá nada en Slack — eso es esperado. Para forzar una alerta de prueba, ver Tarea 7-bis abajo.
 
@@ -387,7 +388,7 @@ curl -X POST https://stjugsrkrweakvzmizpq.functions.supabase.co/seo-sentinel-det
   -d '{"run_id":"<RUN_ID>","brand_id":"<BRAND_ID>","anomaly_kind":"clicks_drop","anomaly_id":"<ANOMALY_ID>"}'
 ```
 
-Esperar 30-60 segundos → debería llegar la alerta a Slack (DM al CEO, mensaje en alerts-operaciones, DM al especialista).
+Esperar 30-60 segundos → debería llegar la alerta a Slack (mensaje en `#alerts-operaciones` + DM al especialista de esa marca).
 
 ---
 
@@ -482,7 +483,7 @@ Cuando termines todo, debería ser cierto:
 - [ ] Las 7 edge functions aparecen "Active" en el Dashboard
 - [ ] Una prueba manual (`curl POST seo-sentinel-orchestrator`) devuelve `{"ok":true, "run_id":"..."}`
 - [ ] `SELECT * FROM seo_sentinel.v_pipeline_health;` devuelve 4 ceros
-- [ ] Si forzaste una alerta de prueba (Tarea 7-bis), llegaron 3 mensajes a Slack: DM al CEO, mensaje en alerts-operaciones, DM al especialista
+- [ ] Si forzaste una alerta de prueba (Tarea 7-bis), llegaron 2 mensajes a Slack: 1 en `#alerts-operaciones` + 1 DM al especialista responsable de la marca de prueba
 
 Cuando todo esto pase, marcá el PR #16 como **Ready for review** y avisame a accesos@seolabagency.com.
 

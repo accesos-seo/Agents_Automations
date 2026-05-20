@@ -1,6 +1,6 @@
 # seo_sentinel — Position Watch
 
-Sistema agéntico de detección de pérdida de tráfico orgánico y posiciones en Google Search Console. Pipeline diario que extrae, analiza, diagnostica y notifica a Slack (DM al CEO + canal por marca) sin intervención humana.
+Sistema agéntico de detección de pérdida de tráfico orgánico y posiciones en Google Search Console. Pipeline diario que extrae, analiza, diagnostica y notifica a Slack (canal `#alerts-operaciones` + DM al especialista responsable de cada marca) sin intervención humana.
 
 ## ¿Qué hace?
 
@@ -10,9 +10,9 @@ Sistema agéntico de detección de pérdida de tráfico orgánico y posiciones e
    - Pérdida de posiciones por keyword (delta ≥ 10 posiciones o salida del top 10)
 3. **Diagnostica** con LLM: identifica clúster temático afectado y top URLs/keywords perdidas
 4. **Notifica** a Slack con Block Kit:
-   - DM al CEO en **toda** alerta
-   - Mensaje al canal de la marca (de `brand_team_routing`)
-   - Fallback channel si no hay routing configurado
+   - Mensaje al canal de la marca (de `brand_team_routing.slack_channel_id`; en SeoLab: `#alerts-operaciones` ID `C0B1B3V4ZB5`)
+   - DM al especialista responsable de la marca (`brand_team_routing.team_lead_user_id`) si está configurado
+   - Fallback channel (`SLACK_FALLBACK_CHANNEL` env var) si la marca no tiene routing
 
 ## Arquitectura
 
@@ -126,7 +126,7 @@ Cambios principales:
 - Logging unificado en `run_events` (append-only) en vez de 4 tablas dispersas
 - Outbox pattern con worker dedicado en vez de envío síncrono inline
 - Detección **dual**: clicks + posiciones (el viejo solo tenía clicks)
-- DM al CEO en toda alerta (env var `CEO_SLACK_USER_ID`)
+- DM al especialista responsable de cada marca (via `brand_team_routing.team_lead_user_id`)
 
 ## Estado
 

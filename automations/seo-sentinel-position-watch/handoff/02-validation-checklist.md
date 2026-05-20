@@ -15,8 +15,8 @@ Ejecutar después de:
 ## Pre-requisitos
 
 - [ ] Acceso SQL Editor: https://supabase.com/dashboard/project/stjugsrkrweakvzmizpq/sql/new
-- [ ] Acceso al canal Slack del routing (`SELECT slack_channel_id FROM seo_sentinel.brand_team_routing`)
-- [ ] DM del bot abierto con el CEO (Slack)
+- [ ] Acceso al canal `#alerts-operaciones` (ID `C0B1B3V4ZB5`) — debe tener el bot `@seo-sentinel` invitado
+- [ ] Slack User ID del especialista cargado en `brand_team_routing.team_lead_user_id` para al menos 1 brand (sino no se valida el DM)
 
 Pegar y ejecutar este SQL para confirmar setup mínimo:
 
@@ -185,7 +185,7 @@ WHERE source = 'seo_sentinel_alert'
 ORDER BY created_at DESC;
 ```
 
-- [ ] Por cada incident: al menos 2 rows (CEO_DM + brand_channel)
+- [ ] Por cada incident: 1 row (solo canal) o 2 rows (canal + DM al especialista, si la marca tiene `team_lead_user_id`)
 - [ ] Status inicial: `pending`, después del próximo tick del worker (cada 30s): `sent`
 
 Esperar hasta 1 minuto, re-ejecutar. Esperado: `status='sent'`, `sent_at` poblado, `error_message=NULL`.
@@ -197,15 +197,14 @@ Si `status='failed'`: leer `error_message`. Errores típicos:
 
 ---
 
-## Paso 9 — Slack recibido (3 destinatarios)
+## Paso 9 — Slack recibido (1 o 2 destinatarios)
 
-- [ ] **DM al CEO**: abrir Slack, buscar el bot `seo-sentinel`, debería haber 1 mensaje por incident del run con header `🚨 ALERTA ROJA — <brand>` o `⚠️ ALERTA AMARILLA — <brand>`
-- [ ] **Canal `#alerts-operaciones`** (`C0B1B3V4ZB5`): mismo mensaje visible
-- [ ] **DM al especialista** (`brand_team_routing.team_lead_user_id`): mismo mensaje recibido como DM por el lead de la marca
+- [ ] **Canal `#alerts-operaciones`** (`C0B1B3V4ZB5`): mensaje visible con header `🚨 ALERTA ROJA — <brand>` o `⚠️ ALERTA AMARILLA — <brand>`
+- [ ] **DM al especialista** (`brand_team_routing.team_lead_user_id`): el especialista responsable de la marca recibió un DM con el mismo Block Kit
 - [ ] El bloque "Resumen" tiene 3 oraciones en español
 - [ ] El bloque "context" tiene `Incidente: <UUID>` + timestamp ISO
 
-Si la marca NO tiene `team_lead_user_id` configurado, solo se reciben 2 mensajes (CEO DM + canal) — eso es esperado.
+Si la marca NO tiene `team_lead_user_id` configurado, solo se recibe 1 mensaje (canal) — eso es esperado.
 
 ---
 
@@ -220,7 +219,7 @@ ORDER BY logged_at DESC;
 ```
 
 - [ ] 1 row por incident del run
-- [ ] `alert_sent_to` es un array con 2 entries (CEO_ID + channel_ID)
+- [ ] `alert_sent_to` es un array con 1 o 2 entries (channel_ID + opcional specialist_user_ID)
 - [ ] `final_status = 'alert_sent'`
 - [ ] `time_to_detect_minutes` razonable (típicamente 1-3 min entre cron y entrega)
 
@@ -242,8 +241,8 @@ SELECT * FROM seo_sentinel.v_pipeline_health;
 ## Definition of Done
 
 - ✅ Los 11 pasos pasaron sin errores
-- ✅ El CEO recibió DMs en Slack
-- ✅ Los canales recibieron mensajes
+- ✅ Canal `#alerts-operaciones` recibió el mensaje
+- ✅ Especialista responsable de la marca recibió DM
 - ✅ `v_pipeline_health` está en ceros
 
 Si algún paso falla → ver `handoff/03-runbook.md` para diagnóstico.

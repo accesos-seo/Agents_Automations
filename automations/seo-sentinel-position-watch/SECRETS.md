@@ -19,8 +19,7 @@ Secretos requeridos en **Supabase Vault** del proyecto Light_House (project ref 
 | `OPENROUTER_API_KEY` | `sk-or-...` | https://openrouter.ai/keys → Create Key | Para LLM (Claude Sonnet) en detective y dispatcher. |
 | `SEO_SENTINEL_MODEL` | string | default: `anthropic/claude-sonnet-4` | Modelo OpenRouter. Cambiar si querés probar otro. |
 | `SLACK_BOT_TOKEN` | `xoxb-...` | Slack App → OAuth & Permissions → Bot User OAuth Token | Scopes mínimos: `chat:write`, `chat:write.public`, `im:write`. Invitar al bot a TODOS los canales destino. |
-| `CEO_SLACK_USER_ID` | `U05ABC...` | Slack: profile del CEO → More → Copy member ID | Recibe DM en TODA alerta. Si está vacío, el dispatcher falla loudly (intencional). |
-| `SLACK_FALLBACK_CHANNEL` | `C09ABC...` | ID del canal fallback en Slack | Se usa cuando una brand no tiene `brand_team_routing` configurado. |
+| `SLACK_FALLBACK_CHANNEL` | `C09ABC...` | ID del canal fallback en Slack | Se usa cuando una brand no tiene `brand_team_routing` configurado. Para SeoLab: `C0B1B3V4ZB5` (canal alerts-operaciones). |
 | `SLACK_ADMIN_CHANNEL` | `C09ABC...` | ID del canal admin/dev en Slack | Recibe alertas del watchdog (runs huérfanos, sistema caído). |
 
 ## SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY
@@ -105,13 +104,15 @@ En cada canal del routing:
 
 Sin esto, `chat.postMessage` devuelve `not_in_channel` y la alerta queda en outbox failed.
 
-### 5. CEO Slack User ID
+### 5. Slack User ID del especialista por marca
+
+El especialista (líder SEO) responsable de cada cliente recibe un DM con la alerta. Su Slack User ID se guarda en `seo_sentinel.brand_team_routing.team_lead_user_id` (TEXT nullable), una fila por marca.
 
 Para encontrar el ID de un usuario:
-- Slack → profile del CEO → More (⋮) → Copy member ID
+- Slack → profile del especialista → More (⋮) → Copy member ID
 - Formato: `U05ABC123XYZ`
 
-El bot necesita poder hacer DM al CEO. Con `im:write` scope debería poder; si no, el CEO tiene que escribirle primero al bot.
+El bot necesita poder hacer DM al usuario. Con `im:write` scope debería poder iniciar la conversación sin que el usuario tenga que abrirla primero.
 
 ## Verificación
 

@@ -32,7 +32,7 @@ T+45-75s detective (por anomaly):
 T+50-80s dispatcher (por incident):
                                        · Idempotencia: skip si ya en incident_log
                                        · LLM → executive_summary
-                                       · Lookup brand_team_routing + CEO_SLACK_USER_ID
+                                       · Lookup brand_team_routing (slack_channel_id + team_lead_user_id)
                                        · UPSERT 2 rows en notifications_outbox (dedupe_key)
                                        · INSERT run_events (event_type='alert_enqueued')
 T+60-110s outbox-worker (cron cada 30s):
@@ -41,9 +41,8 @@ T+60-110s outbox-worker (cron cada 30s):
                                        · UPDATE outbox SET status='sent'
                                        · INSERT incident_log
                                        · INSERT run_events (event_type='alert_sent')
-T+60-110s CEO recibe DM en Slack
 T+60-110s Canal de marca (#alerts-operaciones C0B1B3V4ZB5) recibe mensaje en Slack
-T+60-110s Especialista (team_lead_user_id) recibe DM en Slack
+T+60-110s Especialista (brand_team_routing.team_lead_user_id) recibe DM en Slack
 ```
 
 **Tiempos totales esperados:**
@@ -120,4 +119,4 @@ LIMIT 10;
 | `position_drop` | lost_top10=true AND position_delta >= 10 | **RED** |
 | `position_drop` | position_delta 10-19 (sin lost_top10) | **YELLOW** |
 
-CEO recibe DM en **toda** alerta (RED + YELLOW). Canal de marca también. Especialista (team_lead_user_id de la marca) recibe DM también si está configurado. No hay filtrado por severidad en V1.
+Canal de marca recibe TODA alerta (RED + YELLOW). Especialista (`team_lead_user_id` de la marca) recibe DM también si está configurado. No hay destinatario individual "global" tipo CEO — el responsable se gestiona por-marca. No hay filtrado por severidad en V1.

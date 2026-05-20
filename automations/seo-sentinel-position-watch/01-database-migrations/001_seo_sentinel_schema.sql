@@ -281,7 +281,7 @@ CREATE TABLE IF NOT EXISTS seo_sentinel.incident_log (
   anomaly_date DATE,
   anomaly_kind TEXT
     CHECK (anomaly_kind IN ('clicks_drop', 'position_drop')),
-  alert_sent_to TEXT[],                        -- ej: ['U09CEO','C09BRAND']
+  alert_sent_to TEXT[],                        -- ej: ['C0B1B3V4ZB5','U09LEAD']
   time_to_detect_minutes INTEGER,
   final_status TEXT NOT NULL
     CHECK (final_status IN ('alert_sent', 'alert_failed', 'alert_fallback')),

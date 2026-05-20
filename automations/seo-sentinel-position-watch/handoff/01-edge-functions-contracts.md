@@ -243,7 +243,7 @@ Body:
 
 ## 6. `seo-sentinel-dispatcher`
 
-Genera executive_summary (LLM) y encola alertas en `notifications_outbox` para CEO + canal de marca.
+Genera executive_summary (LLM) y encola alertas en `notifications_outbox` para el canal de la marca + DM al especialista responsable (si está configurado).
 
 ### Request
 
@@ -262,15 +262,14 @@ Body:
 {
   "ok": true,
   "incident_id": "uuid",
-  "enqueued_count": 3,
+  "enqueued_count": 2,
   "severity": "RED",
   "channel_id": "C0B1B3V4ZB5",
-  "ceo_user_id": "U05CEO",
   "specialist_user_id": "U05LEAD"
 }
 ```
 
-`enqueued_count` será **2** si la marca no tiene `team_lead_user_id` en `brand_team_routing` (solo CEO DM + canal). Será **3** si tiene especialista configurado (CEO DM + canal + DM al especialista).
+`enqueued_count` será **1** si la marca no tiene `team_lead_user_id` en `brand_team_routing` (solo canal). Será **2** si tiene especialista configurado (canal + DM al especialista). No hay destinatario "global" tipo CEO.
 
 ### Response 409 (idempotente)
 
@@ -288,7 +287,6 @@ Body:
 |---|---|---|
 | 400 | `missing_incident_id` | Body sin incident_id |
 | 404 | `incident_not_found` | incident_id no existe en incident_diagnostics |
-| 500 | `CEO_SLACK_USER_ID not configured` | Vault entry faltante |
 | 500 | `no brand channel and SLACK_FALLBACK_CHANNEL not configured` | Brand sin routing y sin fallback env var |
 
 El dispatcher genera el `executive_summary` con LLM. Si OpenRouter falla, usa un fallback degradado y emite warning event — la alerta SÍ se envía.

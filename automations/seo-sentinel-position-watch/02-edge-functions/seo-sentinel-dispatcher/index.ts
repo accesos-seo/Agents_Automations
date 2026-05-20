@@ -205,10 +205,10 @@ Responde solo el resumen, sin introducción.`;
       if (updErr) throw new Error(`update summary: ${updErr.message}`);
     }
 
-    // Lookup destinatarios
-    const ceoUserId = Deno.env.get("CEO_SLACK_USER_ID");
-    if (!ceoUserId) throw new Error("CEO_SLACK_USER_ID not configured");
-
+    // Lookup destinatarios.
+    // Modelo: el canal #alerts-operaciones recibe SIEMPRE la alerta + DM al
+    // especialista responsable de la marca (team_lead_user_id en
+    // brand_team_routing). NO hay destinatario individual "global" tipo CEO.
     const { data: routing, error: routingErr } = await supabase
       .from("brand_team_routing")
       .select("slack_channel_id, team_lead_user_id, fallback_channel_id")
@@ -239,14 +239,7 @@ Responde solo el resumen, sin introducción.`;
     });
 
     const rowsToEnqueue: Array<Record<string, unknown>> = [
-      {
-        source: "seo_sentinel_alert",
-        target_type: "slack_dm",
-        channel_id: ceoUserId,
-        payload: { blocks, text },
-        dedupe_key: `seo_sentinel:${incidentId}:v1:ceo_dm`,
-        status: "pending",
-      },
+      // Canal alerts-operaciones (siempre)
       {
         source: "seo_sentinel_alert",
         target_type: "slack_channel",
@@ -257,7 +250,7 @@ Responde solo el resumen, sin introducción.`;
       },
     ];
 
-    // DM al especialista (team_lead) si la marca tiene uno configurado.
+    // DM al especialista responsable de la marca (team_lead_user_id) si existe.
     // Se encola APARTE para garantizar entrega directa, no solo mention en canal.
     if (teamLead) {
       rowsToEnqueue.push({
@@ -281,7 +274,7 @@ Responde solo el resumen, sin introducción.`;
       .eq("id", incidentId);
     if (statusErr) throw new Error(`update dispatch_status: ${statusErr.message}`);
 
-    const targetsForEvent: string[] = ["ceo_dm", brandChannel];
+    const targetsForEvent: string[] = [`channel:${brandChannel}`];
     if (teamLead) targetsForEvent.push(`specialist_dm:${teamLead}`);
 
     if (runId) {
@@ -304,7 +297,6 @@ Responde solo el resumen, sin introducción.`;
       enqueued_count: rowsToEnqueue.length,
       severity,
       channel_id: brandChannel,
-      ceo_user_id: ceoUserId,
       specialist_user_id: teamLead ?? null,
     });
   } catch (err) {
