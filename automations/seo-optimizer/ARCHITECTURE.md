@@ -647,8 +647,8 @@ Todos los errores se emiten como `run_events(event_type='warning'|'agent_failed'
 | Decisión | Por qué |
 |---|---|
 | Schema `seo_optimizer` separado de `seo_sentinel` | Distintos dominios (defensivo vs ofensivo), distintas cadencias (diario vs mensual), distintos consumidores. Acoplarlos genera fragilidad. |
-| Python (FastAPI) en Railway, no Deno edge functions | Sentinel usa Deno; el usuario pidió Python explícitamente. Railway tiene timeouts ilimitados y soporta los webhooks de aprobación. |
-| Una sola FastAPI app con 8 endpoints (no microservices) | Más simple desplegar, debuggear y mantener. La separación lógica está en los módulos handler/. Si en futuro algún agente necesita escalar aparte, se extrae. |
+| TypeScript / Deno en Supabase Edge Functions (no Python en Railway) | Cero costo adicional sobre Supabase, un solo servicio que mantener, consistencia con `position-watch` (también Deno). Decisión revisada — la versión inicial era Python+Railway, se migró a TS+Edge Functions. |
+| Cada agente como una Edge Function independiente (no monolito) | Es la convención de Supabase: cada función desplegable separado, escalable independiente, métricas separadas. Los 9 agentes comparten código via `_shared/`. |
 | Reuso de `article_analysis_index` | Orbit ya invirtió en enriquecimiento LLM (intent, cluster, entities). Re-hacerlo sería caro y crearía inconsistencia. |
 | Live HTML fetch + fallback a `content_items` | Google rankea el live, no la DB. Si el live no es accesible, mejor data desactualizada que ningún análisis. Loguear la fuente para auditoría. |
 | Snapshot del HTML analizado en `article_snapshots` | Provenance: cuando el SEO pregunta "¿basado en qué versión propusiste esto?", tenemos la respuesta. También permite diff inter-runs para detectar implementación. |

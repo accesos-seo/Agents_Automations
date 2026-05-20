@@ -8,10 +8,10 @@ Sigue una propuesta de optimización desde que el cron mensual la detecta hasta 
 
 **Disparador**: `pg_cron 'seo-optimizer-monthly'` ejecuta `seo_optimizer.cron_post('/orchestrator', ...)`.
 
-**Efecto**: `net.http_post` envía un POST a Railway con `x-internal-secret` header.
+**Efecto**: `net.http_post` envía un POST a la Edge Function con `x-internal-secret` header.
 
 ```
-POST https://<railway>.railway.app/orchestrator
+POST https://stjugsrkrweakvzmizpq.supabase.co/functions/v1/seo-optimizer-orchestrator
 Body: {"trigger":"cron","period_days":90}
 ```
 
@@ -19,7 +19,7 @@ Body: {"trigger":"cron","period_days":90}
 
 ## T0+1s — Orchestrator arranca
 
-`02-agents/orchestrator/handler.py:handle()` se ejecuta:
+`supabase/functions/seo-optimizer-orchestrator/index.ts` se ejecuta:
 
 1. Verifica `x-internal-secret` (rechazo 401 si mal).
 2. Calcula ventana: `period_end = today - 3d`, `period_start = period_end - 90d`, YoY = -365d.
@@ -120,9 +120,9 @@ En el front-end (a construir, ver `04-frontend-superprompt.md`):
 
 Trigger DB `opportunities_approved_dispatch`:
 1. Lee `vault.decrypted_secrets`.
-2. POST a Railway: `/writer` con `{opportunity_id}`.
+2. POST a `https://...supabase.co/functions/v1/seo-optimizer-writer` con `{opportunity_id}`.
 
-`writer.run(opportunity_id)`:
+`seo-optimizer-writer/index.ts`:
 1. `status='writing'` (idempotencia).
 2. Carga opportunity + article_snapshot + content_item.
 3. Elige prompt: `low_ctr` → `rewrite_meta.txt`; resto → `rewrite_body.txt`.

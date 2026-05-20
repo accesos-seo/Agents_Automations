@@ -1,25 +1,12 @@
-# Agent contracts — input / output de cada endpoint
+# Agent contracts — input / output de cada Edge Function
 
-Todos los endpoints viven en `02-agents/app.py` (FastAPI). Todos requieren header `x-internal-secret`.
+Cada Edge Function vive en `supabase/functions/seo-optimizer-<name>/index.ts`. Todas requieren header `x-internal-secret`.
 
----
-
-## `GET /health`
-
-**No requiere auth.** Usado por Railway healthcheck y monitores externos.
-
-**Response 200:**
-```json
-{
-  "status": "ok" | "degraded",
-  "version": "0.1.0",
-  "missing_env": ["..."]
-}
-```
+URL base: `https://stjugsrkrweakvzmizpq.supabase.co/functions/v1/`
 
 ---
 
-## `POST /orchestrator`
+## `POST /seo-optimizer-orchestrator`
 
 **Trigger**: `pg_cron seo-optimizer-monthly` o manual.
 
@@ -47,7 +34,7 @@ Todos los endpoints viven en `02-agents/app.py` (FastAPI). Todos requieren heade
 
 ---
 
-## `POST /gsc_ingestor`
+## `POST /seo-optimizer-gsc-ingestor`
 
 **Trigger**: orchestrator (in-process) o manual.
 
@@ -75,7 +62,7 @@ Todos los endpoints viven en `02-agents/app.py` (FastAPI). Todos requieren heade
 
 ---
 
-## `POST /article_ingestor`
+## `POST /seo-optimizer-article-ingestor`
 
 **Trigger**: orchestrator (in-process) o manual.
 
@@ -101,7 +88,7 @@ Todos los endpoints viven en `02-agents/app.py` (FastAPI). Todos requieren heade
 
 ---
 
-## `POST /analyst`
+## `POST /seo-optimizer-analyst`
 
 **Trigger**: orchestrator (in-process) o re-run manual.
 
@@ -132,7 +119,7 @@ Todos los endpoints viven en `02-agents/app.py` (FastAPI). Todos requieren heade
 
 ---
 
-## `POST /writer`
+## `POST /seo-optimizer-writer`
 
 **Trigger**: DB trigger `opportunities_approved_dispatch` (POST automático tras aprobar).
 
@@ -161,7 +148,7 @@ Todos los endpoints viven en `02-agents/app.py` (FastAPI). Todos requieren heade
 
 ---
 
-## `POST /dispatcher`
+## `POST /seo-optimizer-dispatcher`
 
 **Trigger**: orchestrator al final (notifica SEO) o writer al completar (notifica redactor).
 
@@ -185,7 +172,7 @@ Todos los endpoints viven en `02-agents/app.py` (FastAPI). Todos requieren heade
 
 ---
 
-## `POST /outbox_worker`
+## `POST /seo-optimizer-outbox-worker`
 
 **Trigger**: `pg_cron seo-optimizer-outbox-worker` cada minuto.
 
@@ -203,7 +190,7 @@ Todos los endpoints viven en `02-agents/app.py` (FastAPI). Todos requieren heade
 
 ---
 
-## `POST /reeval`
+## `POST /seo-optimizer-reeval`
 
 **Trigger**: `/reeval/batch` itera y llama esto por opportunity. También callable directo.
 
@@ -231,7 +218,7 @@ Todos los endpoints viven en `02-agents/app.py` (FastAPI). Todos requieren heade
 
 ---
 
-## `POST /reeval/batch`
+## `POST /seo-optimizer-reeval-batch`
 
 **Trigger**: `pg_cron seo-optimizer-reeval-daily` (10:00 CO).
 
@@ -252,6 +239,6 @@ Todos los endpoints viven en `02-agents/app.py` (FastAPI). Todos requieren heade
 
 | Status | Causa | Acción |
 |---|---|---|
-| 401 | `x-internal-secret` faltante o no coincide | Verificar Vault + Railway env vars |
-| 500 | Env vars críticas no seteadas | `GET /health` muestra `missing_env` |
-| 503 | Handler no pudo cargarse (import error) | Logs de Railway — probablemente dep faltante |
+| 401 | `x-internal-secret` faltante o no coincide | Verificar Vault + `supabase secrets list` |
+| 500 | Env vars críticas no seteadas | Logs vía `supabase functions logs <function-name>` |
+| 5xx | Error de runtime | `supabase functions logs <function-name>` para ver stack trace |

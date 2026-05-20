@@ -1,6 +1,6 @@
 # seo-optimizer
 
-**Optimización ofensiva mensual de artículos basada en Google Search Console + LLM, con loop de aprobación humana del especialista SEO.**
+**Optimización ofensiva mensual de artículos basada en Google Search Console + LLM, con loop de aprobación del especialista SEO.**
 
 Hermano de `position-watch/` (sentinela defensivo de anomalías). Este módulo es **ofensivo**: identifica oportunidades de crecimiento, genera propuestas de mejora, y entrega HTML reescrito al redactor humano para implementación en el CMS.
 
@@ -22,69 +22,23 @@ Cada **día 1 del mes**, para cada cliente activo en Orbit:
 4. Computa score por oportunidad, filtra rechazos previos y artículos implementados en los últimos 45 días, y selecciona **Top 10 por cliente**.
 5. Notifica al especialista SEO del cliente vía Slack + bandeja en el front de Orbit.
 
-**Especialista SEO aprueba o rechaza.** Al aprobar, se dispara un segundo agente que produce el **HTML reescrito** + diff. Va al redactor, que implementa en el CMS.
+**Especialista SEO aprueba o rechaza.** Al aprobar, se dispara un segundo agente (`/seo-optimizer-writer`) que produce el **HTML reescrito** + diff. Va al redactor, que implementa en el CMS.
 
 **A los 45 días post-implementación**, el sistema re-evalúa automáticamente: ¿subió la posición? ¿cayó? ¿se mantuvo?
 
 ---
 
-## Arquitectura — diagrama de alto nivel
-
-```
-pg_cron mensual ─▶ /orchestrator
-                       ├─▶ /gsc_ingestor (fan-out por cliente)
-                       └─▶ /article_ingestor (fan-out por URL)
-                              │
-                              ▼
-                       /analyst (6 categorías + scoring + Top 10)
-                              │
-                              ▼
-                       /dispatcher → notifications_outbox → Slack
-                              │
-                              ▼
-              ══ HUMAN: SEO aprueba/rechaza ══
-                              │ approve
-                              ▼
-                       /writer (HTML reescrito + diff)
-                              │
-                              ▼
-              ══ HUMAN: Redactor implementa en CMS ══
-                              │ marca implemented
-                              ▼
-                       [45 días de observación]
-                              │
-                              ▼
-                       /reeval (mide impacto)
-```
-
-Detalle completo en [`ARCHITECTURE.md`](./ARCHITECTURE.md).
-
----
-
 ## Stack
 
-- **Backend agentes**: Python 3.12 + FastAPI, desplegado en **Railway** (containers siempre encendidos)
-- **Base de datos**: Supabase (proyecto `Light_House`, schema `seo_optimizer`)
+- **Backend agentes**: TypeScript / Deno en **Supabase Edge Functions** (sin costo adicional sobre Supabase)
+- **Base de datos**: Supabase Postgres (proyecto `Light_House`, schema `seo_optimizer`)
 - **Cron + watchdog**: `pg_cron` + `net.http_post` dentro de Supabase
 - **LLM**: Anthropic Claude Sonnet 4.5 vía OpenRouter, con prompt caching
 - **Notificaciones**: Slack (DM al especialista + canal de marca), reusando `public.notifications_outbox`
 - **Fuente data**: Google Search Console API (Service Account)
 - **Fuente contenido**: live HTML del artículo (con fallback a `public.content_items`)
 
----
-
-## Reuso del ecosistema Orbit
-
-Este módulo **no duplica datos** que ya viven en Orbit:
-
-| Recurso reutilizado | Uso |
-|---|---|
-| `public.clientes` | Identidad del cliente/marca (FK desde nuestras tablas) |
-| `public.content_items` | Cuerpo del artículo (fallback), versionado, metadata |
-| `public.article_analysis_index` | Intención, customer journey, cluster, entidades, fingerprint semántico — JOIN para el Analista |
-| `public.notifications_outbox` | Cola de notificaciones Slack |
-| `seo_sentinel.*` | Independiente — no se toca |
-| `ahrefs_web_analysis.*` | Solo referencia de patrón arquitectónico |
+**Todo en Supabase. Un solo proveedor. Sin servicios externos.**
 
 ---
 
@@ -94,35 +48,58 @@ Este módulo **no duplica datos** que ya viven en Orbit:
 seo-optimizer/
 ├── README.md                                ← este archivo
 ├── ARCHITECTURE.md                          ← diseño completo + decisiones
-├── SECRETS.md                               ← Vault entries necesarios
-├── pyproject.toml                           ← deps Python
-├── Dockerfile
-├── railway.toml
-├── .env.example
-├── 01-database-migrations/
+├── SECRETS.md                               ← Vault entries + Function env vars
+├── 01-database-migrations/                  ← SQL aplicadas vía MCP a Light_House
 │   ├── 001_seo_optimizer_schema.sql
 │   ├── 002_seo_optimizer_views.sql
-│   ├── 003_seo_optimizer_cron.sql
-│   └── 004_seo_optimizer_outbox_reuse.sql
-├── 02-agents/                                ← FastAPI app + handlers
-│   ├── app.py
-│   ├── _shared/                              ← supabase_client, gsc_api, llm_client, run_events, slack, html_utils, scoring
-│   ├── orchestrator/
-│   ├── gsc_ingestor/
-│   ├── article_ingestor/
-│   ├── analyst/                              ← incluye categories/*.py + prompts/
-│   ├── writer/                               ← prompts/ con plantillas de rewrite
-│   ├── dispatcher/
-│   ├── outbox_worker/
-│   └── reeval/
-├── 03-tests/
+│   ├── 003_seo_optimizer_cron.sql           (versión inicial, reemplazada por 006)
+│   ├── 004_seo_optimizer_outbox_reuse.sql
+│   ├── 005_seo_optimizer_client_config.sql
+│   └── 006_seo_optimizer_migrate_to_edge_functions.sql
+├── supabase/
+│   ├── config.toml                          ← config para `supabase functions deploy`
+│   └── functions/                           ← Edge Functions (TypeScript / Deno)
+│       ├── _shared/                         ← módulos compartidos
+│       │   ├── supabase.ts
+│       │   ├── secret.ts
+│       │   ├── run-events.ts
+│       │   ├── scoring.ts
+│       │   ├── slack-blockkit.ts
+│       │   ├── orbit.ts
+│       │   ├── html-utils.ts
+│       │   ├── llm-client.ts
+│       │   └── gsc-api.ts
+│       ├── seo-optimizer-orchestrator/index.ts
+│       ├── seo-optimizer-gsc-ingestor/index.ts
+│       ├── seo-optimizer-article-ingestor/index.ts
+│       ├── seo-optimizer-analyst/           (con categories/ + types + topn-selector)
+│       ├── seo-optimizer-writer/            (con prompts/)
+│       ├── seo-optimizer-dispatcher/
+│       ├── seo-optimizer-outbox-worker/
+│       ├── seo-optimizer-reeval/
+│       └── seo-optimizer-reeval-batch/
 └── handoff/
     ├── 00-data-flow.md
     ├── 01-agent-contracts.md
     ├── 02-validation-checklist.md
     ├── 03-runbook.md
-    └── 04-frontend-superprompt.md            ← prompt final para el técnico de frontend
+    └── 04-frontend-superprompt.md
 ```
+
+---
+
+## Reuso del ecosistema Orbit
+
+Este módulo **no duplica datos** que ya viven en Orbit:
+
+| Recurso reutilizado | Uso |
+|---|---|
+| `public.clientes` | Identidad del cliente (FK desde nuestras tablas) |
+| `public.content_items` | Cuerpo del artículo (fallback), versionado, metadata |
+| `public.article_analysis_index` | Intención, customer journey, cluster, entidades, fingerprint semántico — JOIN para el Analista |
+| `public.notifications_outbox` | Cola de notificaciones Slack |
+| `seo_optimizer.client_config` | Per-cliente: gsc_property_url, is_active, Slack channel — NUESTRA tabla, no Orbit |
+| `seo_sentinel.*` | Independiente — no se toca |
 
 ---
 
@@ -131,32 +108,39 @@ seo-optimizer/
 | Fase | Descripción | Estado |
 |---|---|---|
 | 0 | Plan estructurado y validado | ✅ |
-| 1 | Scaffold local + docs raíz | 🔄 (este commit) |
-| 2 | Migración SQL 001 (schema + triggers) | ⏳ |
-| 3 | Migraciones 002 / 003 / 004 (views, cron, outbox) | ⏳ |
-| 4 | Agentes Python (8 handlers + _shared) | ⏳ |
-| 5 | Aplicar migraciones a Light_House + verificación | ⏳ |
-| 6 | Handoff docs + super-prompt frontend | ⏳ |
-| 7 | Deploy a Railway + smoke test (a cargo del usuario) | ⏳ |
+| 1 | Scaffold local + docs raíz | ✅ |
+| 2-3 | Migraciones SQL 001-006 aplicadas a Light_House | ✅ |
+| 4 | 9 Edge Functions TypeScript + 9 módulos _shared | ✅ |
+| 5 | Verificación de schema y cron jobs | ✅ |
+| 6 | Handoff docs + super-prompt frontend | ✅ |
+| 7 | **Setear secrets en Supabase Vault** | ⏳ pendiente tú |
+| 8 | **Crear Service Account GSC + dar acceso a propiedades de clientes** | ⏳ pendiente tú |
+| 9 | **`supabase functions deploy` para las 9 funciones** | ⏳ pendiente tú |
+| 10 | **Onboard del primer cliente vía SQL** | ⏳ pendiente tú |
+| 11 | **Smoke test E2E** | ⏳ pendiente |
+| 12 | **Frontend (las 2 pestañas)** | ⏳ con super-prompt listo |
 
 ---
 
-## Deploy (cuando esté listo)
+## Deploy rápido (cuando tengas los secrets seteados)
 
-Ver [`handoff/03-runbook.md`](./handoff/03-runbook.md) para el procedimiento completo. Resumen:
+```bash
+cd seo-optimizer/supabase
 
-1. Setear secrets en Supabase Vault (lista en [`SECRETS.md`](./SECRETS.md)).
-2. Aplicar las 4 migraciones SQL en orden contra `Light_House`.
-3. Crear proyecto Railway, conectar al repo, setear env vars.
-4. Cron jobs ya quedan habilitados al aplicar `003_seo_optimizer_cron.sql`.
-5. Smoke test: `curl -X POST <railway-url>/orchestrator -H 'x-internal-secret: ...' -d '{"trigger":"manual"}'`.
+# Despliega las 9 funciones de una vez:
+supabase functions deploy seo-optimizer-orchestrator \
+                          seo-optimizer-gsc-ingestor \
+                          seo-optimizer-article-ingestor \
+                          seo-optimizer-analyst \
+                          seo-optimizer-writer \
+                          seo-optimizer-dispatcher \
+                          seo-optimizer-outbox-worker \
+                          seo-optimizer-reeval \
+                          seo-optimizer-reeval-batch \
+  --project-ref stjugsrkrweakvzmizpq
+```
 
----
-
-## Restricciones operativas (heredadas del entorno del usuario)
-
-- **PowerShell + OneDrive timeouts**: comandos `git`, `supabase functions deploy`, etc. se entregan al usuario para que los corra manualmente. No corro deploys en background.
-- **Supabase MCP scope**: el MCP solo ve `Light_House` y `Swarm Agentes MD`. Las migraciones se aplican vía `mcp__apply_migration` al primero.
+Detalle paso a paso en `handoff/03-runbook.md`.
 
 ---
 

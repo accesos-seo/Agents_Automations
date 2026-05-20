@@ -1,8 +1,48 @@
-# Runbook — troubleshooting + procedimientos comunes
+# Runbook — deploy + troubleshooting + procedimientos comunes
 
 ---
 
-## Acciones operativas frecuentes
+## 1. Setup inicial (una sola vez)
+
+### 1.1 Setear el internal secret en Vault
+
+```sql
+-- En SQL Editor de Supabase (Dashboard → SQL Editor):
+SELECT vault.create_secret('<el-valor-de-openssl-rand-hex-32>', 'SEO_OPTIMIZER_INTERNAL_SECRET');
+```
+
+O via Dashboard → Project Settings → Vault → New Secret. Nombre exacto: `SEO_OPTIMIZER_INTERNAL_SECRET`.
+
+### 1.2 Setear secrets para las Edge Functions
+
+```bash
+cd seo-optimizer
+supabase secrets set --project-ref stjugsrkrweakvzmizpq \
+  SEO_OPTIMIZER_INTERNAL_SECRET="<MISMO valor que en Vault>" \
+  OPENROUTER_API_KEY="<sk-or-v1-...>" \
+  SLACK_BOT_TOKEN="<xoxb-...>" \
+  SLACK_FALLBACK_CHANNEL="<C09...>" \
+  SLACK_ADMIN_CHANNEL="<C09...>" \
+  GSC_SERVICE_ACCOUNT_JSON='<JSON entero como string en una sola línea>' \
+  ORBIT_FRONTEND_URL="https://orbit.<tu-dominio>"
+```
+
+Verifica con `supabase secrets list --project-ref stjugsrkrweakvzmizpq`.
+
+### 1.3 Desplegar las 9 Edge Functions
+
+```bash
+cd seo-optimizer
+for fn in seo-optimizer-orchestrator seo-optimizer-gsc-ingestor seo-optimizer-article-ingestor \
+          seo-optimizer-analyst seo-optimizer-writer seo-optimizer-dispatcher \
+          seo-optimizer-outbox-worker seo-optimizer-reeval seo-optimizer-reeval-batch; do
+  supabase functions deploy "$fn" --project-ref stjugsrkrweakvzmizpq --no-verify-jwt
+done
+```
+
+---
+
+## 2. Acciones operativas frecuentes
 
 ### Onboarding de un nuevo cliente
 
@@ -15,15 +55,14 @@ INSERT INTO seo_optimizer.client_config (
     slack_channel_id,                       -- 'C09XXXXXXX' o NULL para usar SLACK_FALLBACK_CHANNEL
     seo_specialist_user_id,                 -- UUID del SEO en auth.users (opcional)
     redactor_user_id                        -- UUID del redactor (opcional)
-)
-VALUES (
+) VALUES (
     '<client-uuid>',
     'sc-domain:ejemplo.com',
     TRUE, NULL, 'C09XXXXXXX', NULL, NULL
 );
 ```
 
-**IMPORTANTE**: Verifica que la Service Account de GSC (`GSC_SERVICE_ACCOUNT_JSON`) tenga acceso "Full" a esa property en Search Console.
+**IMPORTANTE**: Verifica que la Service Account de GSC tenga acceso "Full" a esa property en Search Console.
 
 ### Pausar un cliente sin borrarlo
 
@@ -31,31 +70,29 @@ VALUES (
 UPDATE seo_optimizer.client_config SET is_active = FALSE WHERE client_id = '<uuid>';
 ```
 
-### Disparar un run manual (fuera del cron mensual)
+### Disparar un run manual
 
 ```bash
-curl -X POST https://<railway>/orchestrator \
+curl -X POST "https://stjugsrkrweakvzmizpq.supabase.co/functions/v1/seo-optimizer-orchestrator" \
   -H "x-internal-secret: <SEO_OPTIMIZER_INTERNAL_SECRET>" \
+  -H "content-type: application/json" \
   -d '{"trigger":"manual","period_days":90}'
 ```
 
 Solo para un cliente específico:
 ```bash
-curl -X POST https://<railway>/orchestrator \
-  -H "x-internal-secret: ..." \
-  -d '{"trigger":"manual","client_ids":["<uuid>"],"period_days":90}'
+... -d '{"trigger":"manual","client_ids":["<uuid>"],"period_days":90}'
 ```
 
 ### Re-generar el rewrite de una opportunity
 
-Si el SEO no le gustó la primera reescritura:
 ```bash
-curl -X POST https://<railway>/writer \
-  -H "x-internal-secret: ..." \
+curl -X POST "https://stjugsrkrweakvzmizpq.supabase.co/functions/v1/seo-optimizer-writer" \
+  -H "x-internal-secret: <SECRET>" \
   -d '{"opportunity_id":"<uuid>","regenerate":true}'
 ```
 
-### Reabrir un rechazo (permitir que se vuelva a proponer)
+### Reabrir un rechazo
 
 ```sql
 UPDATE seo_optimizer.rejection_log
@@ -65,12 +102,11 @@ WHERE dedupe_key = '<dedupe-key>';
 
 ---
 
-## Síntomas comunes y soluciones
+## 3. Síntomas comunes y soluciones
 
 ### "Los runs nunca arrancan / cron no parece estar funcionando"
 
 ```sql
--- Ver últimas ejecuciones del cron
 SELECT j.jobname, r.start_time, r.end_time, r.status, r.return_message
 FROM cron.job_run_details r
 JOIN cron.job j ON j.jobid = r.jobid
@@ -78,8 +114,20 @@ WHERE j.jobname LIKE 'seo-optimizer-%'
 ORDER BY r.start_time DESC LIMIT 20;
 ```
 
-Si `status='failed'` con `return_message` mencionando "vault secrets":
-→ Faltan `SEO_OPTIMIZER_RAILWAY_URL` o `SEO_OPTIMIZER_INTERNAL_SECRET` en Vault.
+Si `status='failed'` con mensaje "missing SEO_OPTIMIZER_INTERNAL_SECRET":
+→ Falta el secret en Vault. Setearlo (sección 1.1).
+
+### "Edge Function devuelve 401"
+
+→ El header `x-internal-secret` está mal o no coincide. Verificar que el valor en Vault sea idéntico al de `supabase secrets set ...`.
+
+### "Edge Function devuelve 500 con missing env var"
+
+```bash
+supabase functions logs <function-name> --project-ref stjugsrkrweakvzmizpq
+```
+
+→ Setear el secret faltante con `supabase secrets set`.
 
 ### "Orchestrator se cuelga en 'running'"
 
@@ -92,10 +140,10 @@ UPDATE seo_optimizer.runs SET status='failed', completed_at=NOW(),
 ### "Un cliente nunca aparece en los resultados"
 
 ```sql
--- 1. ¿Está activo?
+-- ¿Está activo en client_config?
 SELECT * FROM seo_optimizer.v_active_clients WHERE client_id='<uuid>';
 
--- 2. ¿La GSC ingestion falló?
+-- ¿La GSC ingestion falló?
 SELECT * FROM seo_optimizer.run_events
 WHERE client_id='<uuid>' AND event_type IN ('agent_failed','warning')
 ORDER BY occurred_at DESC LIMIT 10;
@@ -109,10 +157,9 @@ Causas frecuentes:
 
 ```sql
 -- ¿El trigger existe?
-SELECT trigger_name, event_manipulation, action_timing
-FROM information_schema.triggers
-WHERE event_object_schema='seo_optimizer'
-  AND event_object_table='opportunities';
+SELECT trigger_name FROM information_schema.triggers
+WHERE event_object_schema='seo_optimizer' AND event_object_table='opportunities';
+-- Debe incluir: opportunities_approved_dispatch
 
 -- ¿Hay warnings de vault en run_events?
 SELECT * FROM seo_optimizer.run_events
@@ -120,25 +167,19 @@ WHERE event_source='db_trigger' AND event_type='warning'
 ORDER BY occurred_at DESC LIMIT 5;
 ```
 
-Si "missing_vault_secrets": setear `SEO_OPTIMIZER_RAILWAY_URL` y `SEO_OPTIMIZER_INTERNAL_SECRET` en Vault.
-
-### "Slack no llega — pero el outbox tiene rows 'sent'"
-
-Verificar que el `SLACK_BOT_TOKEN` tenga el scope `chat:write.public` y que el bot esté invitado al canal (`/invite @<bot-name>` desde el canal).
-
-### "Slack no llega — outbox tiene rows 'failed'"
+### "Slack no llega"
 
 ```sql
-SELECT id, channel_id, error_message, retry_count
+-- ¿Outbox tiene la row?
+SELECT id, channel_id, status, retry_count, error_message
 FROM public.notifications_outbox
-WHERE source='seo_optimizer' AND status='failed'
-ORDER BY created_at DESC LIMIT 10;
+WHERE source='seo_optimizer' ORDER BY created_at DESC LIMIT 10;
 ```
 
 Errores típicos:
 - `channel_not_found`: canal id mal o bot no invitado.
-- `not_in_channel`: bot no invitado al canal privado.
-- `invalid_auth`: bot token vencido/regenerado.
+- `not_in_channel`: bot no invitado al canal privado → `/invite @<nombre-del-bot>` en Slack.
+- `invalid_auth`: bot token vencido → regenerar en Slack app config + actualizar secret.
 
 ### "El LLM (writer) está fallando consistentemente"
 
@@ -150,44 +191,49 @@ GROUP BY error_message;
 ```
 
 Causas:
-- OpenRouter rate limit: bajar concurrencia o aumentar plan.
-- `parse_error`: prompt necesita ajuste. Ver `02-agents/writer/prompts/*.txt`.
-- `tokens exceeded`: el artículo es muy largo. El prompt instruye salida por secciones — verificar que LLM esté siguiendo la regla.
+- OpenRouter rate limit / sin créditos: agregar créditos en openrouter.ai
+- `parse_error`: el LLM no devolvió JSON parseable. Ver logs de la función para el output real.
+
+### "Edge Function timeout (>150s)"
+
+Edge Functions tienen un límite de 150s. Si el orchestrator se queda corto:
+- El watchdog detectará el run colgado y lo marcará failed después de 60 min.
+- Las ingestores siguen ejecutándose en segundo plano aunque el orchestrator haya retornado.
+- Para clientes con muchas URLs (>1000), considerar bajar `max_urls` en article-ingestor o procesar clientes en batches separados.
 
 ---
 
-## TBDs y resoluciones recomendadas
+## 4. TBDs y resoluciones recomendadas
 
 | TBD | Estado actual | Cuándo resolver | Cómo |
 |---|---|---|---|
 | `public.clientes.gsc_property_url` no existe | Usamos `seo_optimizer.client_config.gsc_property_url` | Cuando se onboarde el 1er cliente | Insert manual per client (ver arriba) |
-| `client_config.seo_specialist_user_id` sin uso | Front no construido todavía | Cuando se construya el front | Pasa a usarse en dispatcher para DM directo en lugar de canal |
+| `client_config.seo_specialist_user_id` sin uso | Front no construido todavía | Cuando se construya el front | Pasa a usarse en dispatcher para DM directo |
 | `client_config.slack_channel_id` opcional | Usa `SLACK_FALLBACK_CHANNEL` si NULL | Per client al onboardar | Setear con el canal del cliente |
-| `ORBIT_FRONTEND_URL` placeholder | Hardcoded `https://orbit.example.com` | Al desplegar front | Setear env var en Railway |
-| Sub-minute outbox worker | Actualmente cada 1 min | Si necesitas notificaciones más rápidas | Cambiar schedule a `'30 seconds'` (requiere pg_cron 1.6+) |
+| `ORBIT_FRONTEND_URL` placeholder | Hardcoded `https://orbit.example.com` | Al desplegar front | Setear secret en Edge Functions |
 
 ---
 
-## Backups y migraciones futuras
+## 5. Backups y rollback
 
-- Toda la data está en Light_House. Backups automáticos diarios de Supabase aplican.
-- Para revertir una migración: no hay scripts de down. Las migraciones están diseñadas idempotentes (`IF EXISTS`/`IF NOT EXISTS`).
-- Para destruir todo y empezar de cero (cuidado — pierde toda la historia):
+- **Backups**: Supabase hace backups automáticos diarios. No requiere acción.
+- **Rollback de migración**: no hay scripts de down. Las migraciones son idempotentes (`IF EXISTS`/`IF NOT EXISTS`).
+- **Empezar de cero** (cuidado — pierde toda la historia):
   ```sql
   DROP SCHEMA seo_optimizer CASCADE;
-  -- Re-aplicar las 5 migraciones en orden
+  -- Re-aplicar las 6 migraciones en orden via SQL Editor o MCP
   ```
 
 ---
 
-## Métricas de salud a vigilar (dashboard / monitoreo)
+## 6. Métricas de salud a vigilar
 
+Query única para snapshot completo:
 ```sql
--- Una sola query que da el snapshot completo:
 SELECT * FROM seo_optimizer.v_pipeline_health;
 ```
 
-Alertas recomendadas (a configurar en lo que uses para alerting):
+Alertas recomendadas (configurar donde uses alerting):
 - `runs_stuck > 0` durante >2h → algo grave
 - `outbox_stale_locks > 0` durante >30 min → worker probablemente caído
 - `opportunities_pending_stale > 20` → SEO no está revisando
@@ -195,10 +241,10 @@ Alertas recomendadas (a configurar en lo que uses para alerting):
 
 ---
 
-## Métricas de éxito a reportar mensualmente
+## 7. Métricas de éxito (reporte mensual)
 
 ```sql
 SELECT * FROM seo_optimizer.v_outcomes_summary;
 ```
 
-Si la columna `success_rate_pct` cae por debajo de 50% sostenido 3 meses → revisar prompts y scoring.
+Si `success_rate_pct` cae por debajo de 50% sostenido 3 meses → revisar prompts y scoring.
