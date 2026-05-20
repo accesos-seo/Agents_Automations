@@ -197,12 +197,15 @@ Si `status='failed'`: leer `error_message`. Errores típicos:
 
 ---
 
-## Paso 9 — Slack recibido
+## Paso 9 — Slack recibido (3 destinatarios)
 
 - [ ] **DM al CEO**: abrir Slack, buscar el bot `seo-sentinel`, debería haber 1 mensaje por incident del run con header `🚨 ALERTA ROJA — <brand>` o `⚠️ ALERTA AMARILLA — <brand>`
-- [ ] **Canal de marca**: abrir el canal del routing, mismo mensaje visible
+- [ ] **Canal `#alerts-operaciones`** (`C0B1B3V4ZB5`): mismo mensaje visible
+- [ ] **DM al especialista** (`brand_team_routing.team_lead_user_id`): mismo mensaje recibido como DM por el lead de la marca
 - [ ] El bloque "Resumen" tiene 3 oraciones en español
 - [ ] El bloque "context" tiene `Incidente: <UUID>` + timestamp ISO
+
+Si la marca NO tiene `team_lead_user_id` configurado, solo se reciben 2 mensajes (CEO DM + canal) — eso es esperado.
 
 ---
 

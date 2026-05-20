@@ -238,26 +238,41 @@ Responde solo el resumen, sin introducción.`;
       team_lead_user_id: teamLead,
     });
 
-    const ceoRow = {
-      source: "seo_sentinel_alert",
-      target_type: "slack_dm",
-      channel_id: ceoUserId,
-      payload: { blocks, text },
-      dedupe_key: `seo_sentinel:${incidentId}:v1:ceo_dm`,
-      status: "pending",
-    };
-    const channelRow = {
-      source: "seo_sentinel_alert",
-      target_type: "slack_channel",
-      channel_id: brandChannel,
-      payload: { blocks, text },
-      dedupe_key: `seo_sentinel:${incidentId}:v1:channel:${brandChannel}`,
-      status: "pending",
-    };
+    const rowsToEnqueue: Array<Record<string, unknown>> = [
+      {
+        source: "seo_sentinel_alert",
+        target_type: "slack_dm",
+        channel_id: ceoUserId,
+        payload: { blocks, text },
+        dedupe_key: `seo_sentinel:${incidentId}:v1:ceo_dm`,
+        status: "pending",
+      },
+      {
+        source: "seo_sentinel_alert",
+        target_type: "slack_channel",
+        channel_id: brandChannel,
+        payload: { blocks, text },
+        dedupe_key: `seo_sentinel:${incidentId}:v1:channel:${brandChannel}`,
+        status: "pending",
+      },
+    ];
+
+    // DM al especialista (team_lead) si la marca tiene uno configurado.
+    // Se encola APARTE para garantizar entrega directa, no solo mention en canal.
+    if (teamLead) {
+      rowsToEnqueue.push({
+        source: "seo_sentinel_alert",
+        target_type: "slack_dm",
+        channel_id: teamLead,
+        payload: { blocks, text },
+        dedupe_key: `seo_sentinel:${incidentId}:v1:specialist_dm:${teamLead}`,
+        status: "pending",
+      });
+    }
 
     const { error: enqueueErr } = await supabasePublic
       .from("notifications_outbox")
-      .upsert([ceoRow, channelRow], { onConflict: "dedupe_key", ignoreDuplicates: true });
+      .upsert(rowsToEnqueue, { onConflict: "dedupe_key", ignoreDuplicates: true });
     if (enqueueErr) throw new Error(`outbox upsert: ${enqueueErr.message}`);
 
     const { error: statusErr } = await supabase
@@ -265,6 +280,9 @@ Responde solo el resumen, sin introducción.`;
       .update({ dispatch_status: "pending", updated_at: new Date().toISOString() })
       .eq("id", incidentId);
     if (statusErr) throw new Error(`update dispatch_status: ${statusErr.message}`);
+
+    const targetsForEvent: string[] = ["ceo_dm", brandChannel];
+    if (teamLead) targetsForEvent.push(`specialist_dm:${teamLead}`);
 
     if (runId) {
       await emitEvent({
@@ -275,7 +293,7 @@ Responde solo el resumen, sin introducción.`;
         payload: {
           incident_id: incidentId,
           severity,
-          targets: ["ceo_dm", brandChannel],
+          targets: targetsForEvent,
         },
       });
     }
@@ -283,10 +301,11 @@ Responde solo el resumen, sin introducción.`;
     return jsonResp({
       ok: true,
       incident_id: incidentId,
-      enqueued_count: 2,
+      enqueued_count: rowsToEnqueue.length,
       severity,
       channel_id: brandChannel,
       ceo_user_id: ceoUserId,
+      specialist_user_id: teamLead ?? null,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

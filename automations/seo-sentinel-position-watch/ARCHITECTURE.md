@@ -98,10 +98,12 @@ pg_cron (08:00 CO = 13:00 UTC daily)
     │    · Brand team: SELECT FROM brand_team_routing WHERE brand_id
     │    · Fallback: Deno.env.get("SLACK_FALLBACK_CHANNEL") si no hay routing
     │
-    │  INSERT en public.notifications_outbox una row por target:
-    │    · {source: 'seo_sentinel_alert', target_type: 'slack_dm', channel_id: CEO_ID, payload: blocks, dedupe_key: 'seo_sentinel:<incident_id>:v1:ceo_dm'}
-    │    · {source: 'seo_sentinel_alert', target_type: 'slack_channel', channel_id: brand_channel, payload: blocks, dedupe_key: 'seo_sentinel:<incident_id>:v1:channel:<channel_id>'}
-    │    · (Si team_lead_user_id existe, mention en el bloque "section" con <@USER_ID>)
+    │  INSERT en public.notifications_outbox (hasta 3 rows por incident):
+    │    · CEO DM    → {target_type: 'slack_dm', channel_id: CEO_SLACK_USER_ID, dedupe_key: 'seo_sentinel:<incident_id>:v1:ceo_dm'}
+    │    · Canal     → {target_type: 'slack_channel', channel_id: brand_channel, dedupe_key: 'seo_sentinel:<incident_id>:v1:channel:<channel_id>'}
+    │    · Esp. DM   → {target_type: 'slack_dm', channel_id: team_lead_user_id, dedupe_key: 'seo_sentinel:<incident_id>:v1:specialist_dm:<user_id>'}
+    │                  (solo si la marca tiene team_lead_user_id en brand_team_routing)
+    │  Además, el block "Resumen" lleva mention <@team_lead> inline en el canal
     │  ON CONFLICT (dedupe_key) DO NOTHING
     │
     │  emit event 'alert_enqueued'

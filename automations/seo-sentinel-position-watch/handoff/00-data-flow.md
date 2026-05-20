@@ -42,7 +42,8 @@ T+60-110s outbox-worker (cron cada 30s):
                                        · INSERT incident_log
                                        · INSERT run_events (event_type='alert_sent')
 T+60-110s CEO recibe DM en Slack
-T+60-110s Canal de marca recibe mensaje en Slack
+T+60-110s Canal de marca (#alerts-operaciones C0B1B3V4ZB5) recibe mensaje en Slack
+T+60-110s Especialista (team_lead_user_id) recibe DM en Slack
 ```
 
 **Tiempos totales esperados:**
@@ -119,4 +120,4 @@ LIMIT 10;
 | `position_drop` | lost_top10=true AND position_delta >= 10 | **RED** |
 | `position_drop` | position_delta 10-19 (sin lost_top10) | **YELLOW** |
 
-CEO recibe DM en **toda** alerta (RED + YELLOW). Canal de marca también. No hay filtrado por severidad en V1.
+CEO recibe DM en **toda** alerta (RED + YELLOW). Canal de marca también. Especialista (team_lead_user_id de la marca) recibe DM también si está configurado. No hay filtrado por severidad en V1.

@@ -59,15 +59,15 @@ INSERT INTO seo_sentinel.brands (
 -- ============================================================
 -- 4. brand_team_routing — canal Slack + responsable por brand
 -- ============================================================
--- Para la brand de testing:
+-- Para la brand de testing — canal alerts-operaciones confirmado:
 INSERT INTO seo_sentinel.brand_team_routing (
   brand_id, slack_channel_id, team_lead_user_id, fallback_channel_id
 )
 SELECT
   b.id,
-  'C09SANDBOX',                              -- PENDING_CONFIG: ID del canal sandbox
-  'U05DEV',                                   -- PENDING_CONFIG: ID del dev responsable
-  'C09DEVOPS'                                 -- PENDING_CONFIG: canal devops fallback
+  'C0B1B3V4ZB5',                             -- canal #alerts-operaciones (fijo)
+  'PENDING_CONFIG: U05XXXXXXX',              -- Slack User ID del especialista de esta brand
+  'C0B1B3V4ZB5'                              -- mismo canal como fallback
 FROM seo_sentinel.brands b
 WHERE b.name = 'Sandbox lovable.dev'
 ON CONFLICT DO NOTHING;

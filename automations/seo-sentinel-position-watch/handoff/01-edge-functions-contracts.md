@@ -262,12 +262,15 @@ Body:
 {
   "ok": true,
   "incident_id": "uuid",
-  "enqueued_count": 2,
+  "enqueued_count": 3,
   "severity": "RED",
-  "channel_id": "C09BRAND",
-  "ceo_user_id": "U05CEO"
+  "channel_id": "C0B1B3V4ZB5",
+  "ceo_user_id": "U05CEO",
+  "specialist_user_id": "U05LEAD"
 }
 ```
+
+`enqueued_count` será **2** si la marca no tiene `team_lead_user_id` en `brand_team_routing` (solo CEO DM + canal). Será **3** si tiene especialista configurado (CEO DM + canal + DM al especialista).
 
 ### Response 409 (idempotente)
 
