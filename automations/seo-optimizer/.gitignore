@@ -48,3 +48,4 @@ Thumbs.db
 *.log
 local_*.json
 scratch/
+supabase/.temp/

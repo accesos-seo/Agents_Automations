@@ -109,16 +109,20 @@ Este módulo **no duplica datos** que ya viven en Orbit:
 |---|---|---|
 | 0 | Plan estructurado y validado | ✅ |
 | 1 | Scaffold local + docs raíz | ✅ |
-| 2-3 | Migraciones SQL 001-006 aplicadas a Light_House | ✅ |
+| 2-3 | Migraciones SQL 001-007 aplicadas a Light_House | ✅ |
 | 4 | 9 Edge Functions TypeScript + 9 módulos _shared | ✅ |
 | 5 | Verificación de schema y cron jobs | ✅ |
 | 6 | Handoff docs + super-prompt frontend | ✅ |
-| 7 | **Setear secrets en Supabase Vault** | ⏳ pendiente tú |
-| 8 | **Crear Service Account GSC + dar acceso a propiedades de clientes** | ⏳ pendiente tú |
-| 9 | **`supabase functions deploy` para las 9 funciones** | ⏳ pendiente tú |
-| 10 | **Onboard del primer cliente vía SQL** | ⏳ pendiente tú |
-| 11 | **Smoke test E2E** | ⏳ pendiente |
-| 12 | **Frontend (las 2 pestañas)** | ⏳ con super-prompt listo |
+| 7 | `SEO_OPTIMIZER_INTERNAL_SECRET` en Vault | ✅ generado y guardado |
+| 8 | Schema expuesto al API PostgREST (migración 007) | ✅ |
+| 9 | Las 9 Edge Functions desplegadas a Light_House | ✅ |
+| 10 | Smoke test del orchestrator | ✅ responde correctamente |
+| 11 | **Service Account GSC + OpenRouter + Slack (3 cuentas externas)** | ⏳ pendiente tú |
+| 12 | **Onboard del primer cliente vía SQL** | ⏳ pendiente tú |
+| 13 | **Smoke test E2E con cliente real** | ⏳ pendiente |
+| 14 | **Frontend (las 2 pestañas)** | ⏳ con super-prompt listo |
+
+**Para los pasos 11-13, ver `handoff/05-PENDING.md` con comandos exactos para copiar-pegar.**
 
 ---
 
