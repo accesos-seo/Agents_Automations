@@ -18,7 +18,7 @@ Secretos requeridos en **Supabase Vault** del proyecto Light_House (project ref 
 | `GA4_SERVICE_ACCOUNT_JSON` | JSON (opcional) | Mismo método que GSC. Puede ser misma SA. | Si no se setea, se reusa `GSC_SERVICE_ACCOUNT_JSON`. Scope: `analytics.readonly`. La SA debe ser Viewer en cada GA4 property. |
 | `OPENROUTER_API_KEY` | `sk-or-...` | https://openrouter.ai/keys → Create Key | Para LLM (Claude Sonnet) en detective y dispatcher. |
 | `SEO_SENTINEL_MODEL` | string | default: `anthropic/claude-sonnet-4` | Modelo OpenRouter. Cambiar si querés probar otro. |
-| `SLACK_BOT_TOKEN` | `xoxb-...` | Slack App → OAuth & Permissions → Bot User OAuth Token | Scopes mínimos: `chat:write`, `chat:write.public`, `im:write`. Invitar al bot a TODOS los canales destino. |
+| `SLACK_BOT_TOKEN` | `xoxb-...` | **Bot existente "Orbit SeoLab"** (ID `D0A4NMACLPP`). Ir a https://api.slack.com/apps → app "Orbit SeoLab" → OAuth & Permissions → Bot User OAuth Token. **NO crear app nueva** — reusamos el mismo bot para todas las automatizaciones. | Scopes mínimos requeridos: `chat:write`, `chat:write.public`, `im:write`. Si no están, agregarlos en OAuth & Permissions y re-instalar la app al workspace. Invitar a `@orbit-seolab` a TODOS los canales destino. |
 | `SLACK_FALLBACK_CHANNEL` | `C09ABC...` | ID del canal fallback en Slack | Se usa cuando una brand no tiene `brand_team_routing` configurado. Para SeoLab: `C0B1B3V4ZB5` (canal alerts-operaciones). |
 | `SLACK_ADMIN_CHANNEL` | `C09ABC...` | ID del canal admin/dev en Slack | Recibe alertas del watchdog (runs huérfanos, sistema caído). |
 
@@ -77,32 +77,37 @@ Por **cada propiedad GA4**:
 
 Pegar como string en Vault. El módulo `_shared/gsc-api.ts` hace `JSON.parse` y firma JWT internamente.
 
-## Setup del Slack Bot
+## Setup del Slack Bot (Orbit SeoLab — ya existe)
 
-### 1. Crear Slack App
+**Importante:** NO se crea un app nueva. Se reusa el bot existente **Orbit SeoLab** (ID `D0A4NMACLPP`) que ya envía notificaciones de otras automatizaciones del equipo.
 
-1. https://api.slack.com/apps → Create New App → From scratch
-2. Nombre: `seo-sentinel` (o el que prefieras), workspace: SeoLab Agency
+### 1. Acceder a la app existente
 
-### 2. Scopes mínimos
+1. https://api.slack.com/apps → seleccionar **"Orbit SeoLab"** del listado
+2. Si no aparece en tu listado, pedir a accesos@seolabagency.com que te agregue como colaborador de la app
 
-OAuth & Permissions → Bot Token Scopes:
+### 2. Verificar scopes
+
+OAuth & Permissions → Bot Token Scopes — confirmar que están:
 - `chat:write` — enviar mensajes a canales donde está invitado
 - `chat:write.public` — enviar a canales públicos sin invitación
-- `im:write` — abrir DM con usuarios
+- `im:write` — abrir DM con usuarios (necesario para el DM al especialista)
 
-### 3. Install to Workspace
+Si **alguno falta**, agregarlo y luego clic en **"Reinstall to Workspace"** arriba (el botón aparece en amarillo cuando hay cambios pendientes). El token cambia tras reinstalar — usar el nuevo en Vault.
 
-OAuth & Permissions → Install to Workspace → copiar el "Bot User OAuth Token" (`xoxb-...`)
+### 3. Copiar el Bot User OAuth Token
 
-### 4. Invitar el bot a los canales destino
+OAuth & Permissions → **Bot User OAuth Token** → copiar el `xoxb-...` → pegar en Vault como `SLACK_BOT_TOKEN`.
 
-En cada canal del routing:
+### 4. Invitar el bot al canal `#alerts-operaciones`
+
+Desde Slack:
 ```
-/invite @seo-sentinel
+/invite @orbit-seolab
 ```
+(o el username real del bot, verificar en su perfil)
 
-Sin esto, `chat.postMessage` devuelve `not_in_channel` y la alerta queda en outbox failed.
+Sin esto, `chat.postMessage` al canal devuelve `not_in_channel` y la alerta queda en outbox failed. Si el bot ya está en ese canal (porque otras automatizaciones lo usan), saltear este paso.
 
 ### 5. Slack User ID del especialista por marca
 

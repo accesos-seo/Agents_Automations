@@ -75,6 +75,7 @@ Todo el código vive bajo esa carpeta. Si querés ver la docs sin clonar:
 
 - Workspace: **SeoLab Agency**
 - Canal principal de alertas: **`#alerts-operaciones`** → ID confirmado: **`C0B1B3V4ZB5`**
+- Bot Slack: **Orbit SeoLab** → ID confirmado: **`D0A4NMACLPP`** (bot compartido entre todas las automatizaciones de la agencia — **NO crear app nueva**)
 
 ---
 
@@ -87,6 +88,7 @@ Todo el código vive bajo esa carpeta. Si querés ver la docs sin clonar:
 | Tabla compartida | `public.notifications_outbox` (ya existe — el código la reusa) |
 | Cron jobs activos | `seo-sentinel-daily` (08:00 CO), `seo-sentinel-watchdog` (cada 2 min), `seo-sentinel-outbox-worker` (cada 30s) |
 | Canal Slack de alertas | `C0B1B3V4ZB5` (alerts-operaciones) |
+| Bot Slack | Orbit SeoLab (`D0A4NMACLPP`) — bot compartido, NO crear app nueva |
 | Modelo LLM | `anthropic/claude-sonnet-4` via OpenRouter |
 | Horario cron | `0 13 * * *` UTC = 08:00 Colombia |
 | Auth GSC/GA4 | Service Account (NO OAuth2) |
@@ -104,7 +106,7 @@ Tabla con todo lo que tu IA va a pedirte. **Llenala antes de arrancar**, te ahor
 |---|---|---|
 | **GSC Service Account JSON** | Google Cloud Console → IAM → Service Accounts → crear cuenta + Keys → Add JSON key (descarga archivo) | JSON completo con `private_key`, `client_email`, etc. |
 | **OpenRouter API key** | https://openrouter.ai/keys → Create Key | String que arranca con `sk-or-...` |
-| **Slack Bot Token** | https://api.slack.com/apps → tu app → OAuth & Permissions → Bot User OAuth Token | String que arranca con `xoxb-...` |
+| **Slack Bot Token** | **Bot existente "Orbit SeoLab"** (ID `D0A4NMACLPP`) — NO crear app nueva. https://api.slack.com/apps → app "Orbit SeoLab" → OAuth & Permissions → Bot User OAuth Token | String que arranca con `xoxb-...` |
 
 ### B. IDs de Slack (te los doy o se los pedís a quien corresponda)
 
@@ -152,23 +154,32 @@ Por cada cliente que vas a monitorear, necesitás:
 
 ---
 
-### Tarea 2: Crear Slack Bot
+### Tarea 2: Usar el bot existente "Orbit SeoLab" (NO crear app nueva)
 
-**Objetivo:** un bot que pueda enviar mensajes al canal `#alerts-operaciones` y DMs a los especialistas responsables de cada marca.
+**Objetivo:** obtener el Bot Token del bot existente del equipo. Toda la agencia usa el mismo bot para sus automatizaciones — NO hace falta crear uno nuevo.
 
-1. Ir a https://api.slack.com/apps → **Create New App** → **From scratch**
-2. Nombre: `seo-sentinel` | Workspace: **SeoLab Agency**
-3. **OAuth & Permissions** → Scopes → Bot Token Scopes → agregar:
+**Datos del bot:**
+- Nombre: **Orbit SeoLab**
+- ID: **`D0A4NMACLPP`**
+- Workspace: SeoLab Agency
+
+1. Ir a https://api.slack.com/apps → seleccionar **"Orbit SeoLab"** del listado
+   - Si no aparece, pedir a accesos@seolabagency.com que te agregue como colaborador de la app
+2. **OAuth & Permissions** → revisar Bot Token Scopes. Tienen que estar los 3:
    - `chat:write` — enviar mensajes
    - `chat:write.public` — enviar a canales públicos sin invitación
-   - `im:write` — abrir DMs con usuarios
-4. **Install to Workspace** → autorizar → copiar el **Bot User OAuth Token** (`xoxb-...`)
-5. En Slack:
-   - Ir al canal `#alerts-operaciones` → escribir `/invite @seo-sentinel` y enviar
-   - Si hay otros canales por marca (no es el caso ahora), invitar al bot también
-6. Para que el bot pueda mandarle DM al especialista de cada marca, no necesitás nada extra (con `im:write` puede iniciar la conversación)
+   - `im:write` — abrir DMs con usuarios (necesario para el DM al especialista)
 
-**Resultado:** un token `xoxb-...`. Anotalo, va a Vault en Tarea 4.
+   Si alguno **falta**, agregalo y clic en **"Reinstall to Workspace"** (botón amarillo arriba). El token cambia tras reinstalar.
+3. Copiar el **Bot User OAuth Token** (`xoxb-...`). Anotalo, va a Vault en Tarea 4.
+4. En Slack, asegurate de que el bot esté en `#alerts-operaciones`:
+   ```
+   /invite @orbit-seolab
+   ```
+   (Si ya está invitado porque otras automatizaciones lo usan, saltea este paso — confirmá con `/who` en el canal.)
+5. Para los DMs al especialista de cada marca, no necesitás nada extra. Con `im:write` el bot puede iniciar la conversación.
+
+**Resultado:** un token `xoxb-...` del bot Orbit SeoLab. Va a Vault en Tarea 4.
 
 ---
 
@@ -197,7 +208,7 @@ Por cada entry de abajo, clic en **"New Secret"** → llenar Name y Secret Value
 | 4 | `GA4_SERVICE_ACCOUNT_JSON` | Mismo JSON que `GSC_SERVICE_ACCOUNT_JSON` (reusamos la SA) | Tarea 1 |
 | 5 | `OPENROUTER_API_KEY` | `sk-or-...` | Tarea 3 |
 | 6 | `SEO_SENTINEL_MODEL` | `anthropic/claude-sonnet-4` | Fijo |
-| 7 | `SLACK_BOT_TOKEN` | `xoxb-...` | Tarea 2 |
+| 7 | `SLACK_BOT_TOKEN` | `xoxb-...` (del bot existente **Orbit SeoLab** `D0A4NMACLPP`) | Tarea 2 |
 | 8 | `SLACK_FALLBACK_CHANNEL` | `C0B1B3V4ZB5` | ← **canal alerts-operaciones** confirmado |
 | 9 | `SLACK_ADMIN_CHANNEL` | `C0B1B3V4ZB5` (mismo que fallback, salvo que haya un canal admin/devs distinto) | **CONFIRMAR con accesos@seolabagency.com** si hay uno separado |
 
@@ -427,8 +438,8 @@ Tu IA te va a guiar paso a paso. Si tenés Supabase MCP conectado (recomendado),
 |---|---|---|
 | `gh` / `git` no clona el repo | Verificar que tenés acceso al repo `accesos-seo/Agents_Automations` (probar `gh auth status`) | accesos@seolabagency.com |
 | Supabase CLI deploy timeout en Windows | Reintentar 1 vez; si sigue, deployar 1 fn a la vez: `python deploy.py orchestrator` | accesos@seolabagency.com |
-| `chat.postMessage` devuelve `not_in_channel` | Asegurarse de haber invitado al bot al canal: `/invite @seo-sentinel` | — |
-| `chat.postMessage` devuelve `missing_scope` | Volver a OAuth & Permissions del Slack App y agregar los 3 scopes (`chat:write`, `chat:write.public`, `im:write`), reinstalar app | — |
+| `chat.postMessage` devuelve `not_in_channel` | Asegurarse de haber invitado al bot al canal: `/invite @orbit-seolab` | — |
+| `chat.postMessage` devuelve `missing_scope` | Volver a OAuth & Permissions de la app **Orbit SeoLab** y agregar los 3 scopes (`chat:write`, `chat:write.public`, `im:write`), **reinstalar app** (el token cambia, actualizar `SLACK_BOT_TOKEN` en Vault con el nuevo) | — |
 | GSC API devuelve `User does not have sufficient permission` | Verificar en Search Console que la SA está agregada como Restricted user en esa propiedad | El responsable del cliente |
 | OpenRouter devuelve 401 / 402 | Verificar saldo en https://openrouter.ai/settings/credits o regenerar key | accesos@seolabagency.com |
 | Cron `seo-sentinel-daily` no se disparó al día siguiente | `SELECT * FROM cron.job WHERE jobname='seo-sentinel-daily';` confirmar que `active=true`. Ver Runbook. | accesos@seolabagency.com |
@@ -479,7 +490,7 @@ Cuando termines todo, debería ser cierto:
 - [ ] Hay al menos 1 marca en `seo_sentinel.brands` con `status='active'`
 - [ ] Hay 1 fila en `seo_sentinel.brand_team_routing` por cada marca, con `slack_channel_id='C0B1B3V4ZB5'` y un `team_lead_user_id` real
 - [ ] La Service Account de Google está agregada como Restricted user en TODAS las propiedades GSC de las marcas
-- [ ] El bot `@seo-sentinel` está invitado al canal `#alerts-operaciones`
+- [ ] El bot **Orbit SeoLab** (`D0A4NMACLPP`) está invitado al canal `#alerts-operaciones` (verificá con `/who` en el canal)
 - [ ] Las 7 edge functions aparecen "Active" en el Dashboard
 - [ ] Una prueba manual (`curl POST seo-sentinel-orchestrator`) devuelve `{"ok":true, "run_id":"..."}`
 - [ ] `SELECT * FROM seo_sentinel.v_pipeline_health;` devuelve 4 ceros

@@ -105,7 +105,7 @@ python deploy.py
 
 Seguir [handoff/02-validation-checklist.md](./handoff/02-validation-checklist.md).
 
-## Datos del proyecto Supabase
+## Datos del proyecto Supabase + Slack
 
 | Item | Valor |
 |---|---|
@@ -115,6 +115,8 @@ Seguir [handoff/02-validation-checklist.md](./handoff/02-validation-checklist.md
 | Tabla compartida | `public.notifications_outbox` |
 | Cron timezone | UTC (08:00 CO = `0 13 * * *`) |
 | Edge functions URL | `https://stjugsrkrweakvzmizpq.functions.supabase.co` |
+| Slack bot | **Orbit SeoLab** (`D0A4NMACLPP`) — bot compartido entre automatizaciones |
+| Canal de alertas | `#alerts-operaciones` (`C0B1B3V4ZB5`) |
 
 ## Diferencia con el scaffold viejo
 

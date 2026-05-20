@@ -106,10 +106,10 @@ ORDER BY created_at DESC;
 
 | `error_message` | Causa | Fix |
 |---|---|---|
-| `not_in_channel` | Bot no está en el canal | `/invite @seo-sentinel` en el canal |
+| `not_in_channel` | Bot no está en el canal | `/invite @orbit-seolab` en el canal |
 | `channel_not_found` | channel_id incorrecto | Verificar `brand_team_routing.slack_channel_id` |
-| `invalid_auth` | SLACK_BOT_TOKEN expirado/incorrecto | Regenerar token en Slack App, actualizar Vault |
-| `missing_scope` | Bot scopes insuficientes | Agregar `chat:write` + `chat:write.public` + `im:write` |
+| `invalid_auth` | SLACK_BOT_TOKEN expirado/incorrecto | Volver a app **Orbit SeoLab** en api.slack.com/apps, copiar token actualizado, regenerar si hace falta, actualizar Vault |
+| `missing_scope` | Bot scopes insuficientes | En app **Orbit SeoLab** → OAuth & Permissions agregar `chat:write` + `chat:write.public` + `im:write` y reinstalar app (el token cambia) |
 | `ratelimited` | Slack rate-limit excedido | Worker hará retry automáticamente |
 | `slack_http_5xx` | Slack caído | Auto-retry, no acción |
 
